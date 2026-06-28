@@ -22,7 +22,6 @@
   <ItemGroup>
     <PackageReference Include="AudioSwitcher.AudioApi" Version="4.0.0-alpha5" />
     <PackageReference Include="AudioSwitcher.AudioApi.CoreAudio" Version="4.0.0-alpha5" />
-    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.22621.38" />
   </ItemGroup>
 
   <!-- The package targets .NET Framework; it works fine on net8-windows, so

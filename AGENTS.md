@@ -35,5 +35,5 @@
 
 ## Dependency Quirk
 - `AudioSwitcher.AudioApi` and `AudioSwitcher.AudioApi.CoreAudio` are pinned to `4.0.0-alpha5`.
-- `Microsoft.Windows.SDK.Contracts` is used for packaged startup-task integration.
+- WinRT APIs for packaged startup-task integration come from the version-specific `net8.0-windows10.0.22621.0` target framework, not from `Microsoft.Windows.SDK.Contracts`.
 - `NU1701` is intentionally suppressed because those packages target .NET Framework but are used here on `net8.0-windows`.
