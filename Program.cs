@@ -1,4 +1,5 @@
 using System.Windows.Forms;
+using AudioSwitcher.AudioApi;
 using AudioSwitcher.AudioApi.CoreAudio;
 
 internal static class Program

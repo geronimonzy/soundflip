@@ -1,5 +1,6 @@
 using System.Windows.Forms;
 using System.Drawing;
+using AudioSwitcher.AudioApi;
 using AudioSwitcher.AudioApi.CoreAudio;
 
 sealed class TrayContext : ApplicationContext
