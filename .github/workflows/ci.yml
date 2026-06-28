@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore .\audsw.Tests\audsw.Tests.csproj
+
+      - name: Build tests and app
+        run: dotnet build .\audsw.Tests\audsw.Tests.csproj -c Release --no-restore
+
+      - name: Run unit tests
+        run: dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release --no-build --verbosity normal
+
+      - name: Publish app
+        shell: pwsh
+        run: .\build.ps1
+
+      - name: Smoke check help output
+        shell: pwsh
+        run: |
+          & .\dist\audsw.exe help
+
+      - name: Smoke check asset export
+        shell: pwsh
+        run: |
+          $outDir = Join-Path $env:RUNNER_TEMP 'audsw-store-assets'
+          if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
+
+          & .\dist\audsw.exe export-assets $outDir
+
+          $expected = @(
+            'Square44x44Logo.png',
+            'StoreLogo.png',
+            'Square150x150Logo.png',
+            'Wide310x150Logo.png',
+            'Square310x310Logo.png'
+          )
+
+          foreach ($file in $expected) {
+            $path = Join-Path $outDir $file
+            if (-not (Test-Path $path)) {
+              throw "Missing exported asset: $file"
+            }
+          }
+
+      - name: Upload published bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: audsw-dist-${{ github.sha }}
+          path: dist
+          if-no-files-found: error

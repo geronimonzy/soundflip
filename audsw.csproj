@@ -8,6 +8,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>audsw</AssemblyName>
     <RootNamespace>AudioSwitcher</RootNamespace>
+    <Product>audsw</Product>
+    <Description>Minimal Windows audio output switcher with tray-based device toggling.</Description>
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- Single self-contained .exe, no install / no .NET runtime needed on the machine -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -19,6 +21,7 @@
   <ItemGroup>
     <PackageReference Include="AudioSwitcher.AudioApi" Version="4.0.0-alpha5" />
     <PackageReference Include="AudioSwitcher.AudioApi.CoreAudio" Version="4.0.0-alpha5" />
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.22621.38" />
   </ItemGroup>
 
   <!-- The package targets .NET Framework; it works fine on net8-windows, so
@@ -26,10 +29,5 @@
   <PropertyGroup>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
-
-  <!-- Ship the sample config next to the exe so `audsw.cfg` is found on first run -->
-  <ItemGroup>
-    <None Update="audsw.cfg" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 
 </Project>

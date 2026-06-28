@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore .\audsw.Tests\audsw.Tests.csproj
+
+      - name: Build tests and app
+        run: dotnet build .\audsw.Tests\audsw.Tests.csproj -c Release --no-restore
+
+      - name: Run unit tests
+        run: dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release --no-build --verbosity normal
+
+      - name: Publish app
+        shell: pwsh
+        run: .\build.ps1
+
+      - name: Smoke check published app
+        shell: pwsh
+        run: |
+          & .\dist\audsw.exe help
+
+          $outDir = Join-Path $env:RUNNER_TEMP 'audsw-release-assets'
+          if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
+          & .\dist\audsw.exe export-assets $outDir
+
+      - name: Package release bundle
+        id: package
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $zipName = "audsw-$tag-win-x64.zip"
+          if (Test-Path $zipName) { Remove-Item $zipName -Force }
+
+          Compress-Archive -Path .\dist\* -DestinationPath $zipName -Force
+
+          $zipPath = (Resolve-Path $zipName).Path
+          "asset_name=$zipName" >> $env:GITHUB_OUTPUT
+          "asset_path=$zipPath" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: audsw ${{ github.ref_name }}
+          files: ${{ steps.package.outputs.asset_path }}
+          generate_release_notes: true
