@@ -33,8 +33,12 @@ speaker icon in the notification area. Right-click it to:
 - **Switch now** — toggle between the two devices (same as the hotkey).
 - **Device 1 / Device 2** — pick each device from a live list of your outputs.
   Your choice is saved to `audsw.cfg`, so no hand-editing.
+- **Set hotkey…** — press a new modifier+key combo to rebind on the spot.
 - **Start with Windows** — toggles a windowless launcher in your Startup folder.
 - **Exit**.
+
+The menu and the toast follow the Windows light/dark setting automatically, and
+the menu uses a Windows 11 style (rounded, flat, themed).
 
 Double-clicking the icon also switches. Every switch pops a small balloon
 notification showing the new device, and the icon tooltip shows the current one.

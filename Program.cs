@@ -1,7 +1,10 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using Microsoft.Win32;
 using AudioSwitcher.AudioApi;
 using AudioSwitcher.AudioApi.CoreAudio;
 
@@ -188,6 +191,7 @@ sealed class TrayContext : ApplicationContext
         };
         _icon.DoubleClick += (_, _) => SwitchNow();
         _icon.ContextMenuStrip.Opening += (_, _) => BuildMenu();
+        _icon.ContextMenuStrip.Opened += (_, _) => Win11.RoundCorners(_icon.ContextMenuStrip);
         UpdateTooltip();
 
         TryRegisterHotkey();
@@ -217,12 +221,23 @@ sealed class TrayContext : ApplicationContext
     void BuildMenu()
     {
         var menu = _icon.ContextMenuStrip!;
+
+        // Re-theme each open so it tracks the current Windows light/dark setting.
+        bool light = Theme.IsLight;
+        ToolStripManager.Renderer = new ModernMenuRenderer(light);
+        menu.BackColor = Theme.Back(light);
+        menu.ForeColor = Theme.Fore(light);
+
         menu.Items.Clear();
+
+        // Snapshot the device list once; both sub-menus and their checks reuse it.
+        var devices = _controller.GetPlaybackDevices(DeviceState.Active).OrderBy(d => d.FullName).ToList();
 
         menu.Items.Add(new ToolStripMenuItem($"Switch now  ({_cfg.Hotkey})", null, (_, _) => SwitchNow()));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(DeviceMenu("Device 1", _cfg.Device1, name => { _cfg.Device1 = name; _cfg.Save(); }));
-        menu.Items.Add(DeviceMenu("Device 2", _cfg.Device2, name => { _cfg.Device2 = name; _cfg.Save(); }));
+        menu.Items.Add(DeviceMenu("Device 1", _cfg.Device1, devices, name => { _cfg.Device1 = name; _cfg.Save(); }));
+        menu.Items.Add(DeviceMenu("Device 2", _cfg.Device2, devices, name => { _cfg.Device2 = name; _cfg.Save(); }));
+        menu.Items.Add(new ToolStripMenuItem($"Set hotkey…  ({_cfg.Hotkey})", null, (_, _) => ConfigureHotkey()));
         menu.Items.Add(new ToolStripSeparator());
 
         var autostart = new ToolStripMenuItem("Start with Windows", null, (_, _) => ToggleAutoStart())
@@ -233,12 +248,23 @@ sealed class TrayContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => ExitApp()));
     }
 
-    ToolStripMenuItem DeviceMenu(string label, string current, Action<string> onPick)
+    void ConfigureHotkey()
     {
-        var resolved = Audio.Resolve(_controller, current);
-        var root = new ToolStripMenuItem($"{label}:  {resolved?.FullName ?? (current.Length > 0 ? current + " (not found)" : "<not set>")}");
+        var picked = HotkeyDialog.Ask(_cfg.Hotkey);
+        if (picked is null || picked == _cfg.Hotkey) return;
+        _cfg.Hotkey = picked;
+        _cfg.Save();
+        TryRegisterHotkey();
+    }
 
-        foreach (var d in _controller.GetPlaybackDevices(DeviceState.Active).OrderBy(d => d.FullName))
+    ToolStripMenuItem DeviceMenu(string label, string current, IReadOnlyList<CoreAudioDevice> devices, Action<string> onPick)
+    {
+        var resolved = string.IsNullOrWhiteSpace(current) ? null
+            : devices.FirstOrDefault(d => d.FullName.Contains(current, StringComparison.OrdinalIgnoreCase));
+        var root = new ToolStripMenuItem($"{label}:  {resolved?.FullName ?? (current.Length > 0 ? current + " (not found)" : "<not set>")}");
+        root.DropDownOpened += (_, _) => Win11.RoundCorners(root.DropDown);
+
+        foreach (var d in devices)
         {
             string name = d.FullName;
             var item = new ToolStripMenuItem(name)
@@ -289,11 +315,12 @@ sealed class TrayContext : ApplicationContext
 
     void Notify(string title, string text, ToolTipIcon kind)
     {
+        bool light = Theme.IsLight;
         Color fg = kind switch
         {
-            ToolTipIcon.Warning => Color.FromArgb(0xF0, 0xC0, 0x60),
-            ToolTipIcon.Error   => Color.FromArgb(0xF0, 0x70, 0x70),
-            _                   => Color.White,
+            ToolTipIcon.Warning => Theme.Warning(light),
+            ToolTipIcon.Error   => Theme.Error(light),
+            _                   => Theme.Fore(light),
         };
         string message = string.IsNullOrEmpty(text) ? title : text;
 
@@ -302,7 +329,7 @@ sealed class TrayContext : ApplicationContext
         _toast = null;
         old?.Close();
 
-        var toast = new ToastForm(message, fg);
+        var toast = new ToastForm(message, fg, Theme.Back(light));
         _toast = toast;
         toast.Show();
     }
@@ -326,6 +353,208 @@ sealed class TrayContext : ApplicationContext
     }
 }
 
+// ---------------------------------------------------------------------------
+// theme + drawing helpers
+// ---------------------------------------------------------------------------
+
+static class Theme
+{
+    // Windows "apps" light/dark setting. Defaults to dark if unreadable.
+    public static bool IsLight
+    {
+        get
+        {
+            try
+            {
+                using var k = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+                return k?.GetValue("AppsUseLightTheme") is int v && v != 0;
+            }
+            catch { return false; }
+        }
+    }
+
+    public static Color Back(bool light) => light ? Color.FromArgb(249, 249, 249) : Color.FromArgb(44, 44, 44);
+    public static Color Fore(bool light) => light ? Color.FromArgb(26, 26, 26) : Color.White;
+    public static Color Hover(bool light) => light ? Color.FromArgb(24, 0, 0, 0) : Color.FromArgb(26, 255, 255, 255);
+    public static Color Line(bool light) => light ? Color.FromArgb(28, 0, 0, 0) : Color.FromArgb(28, 255, 255, 255);
+    public static Color Disabled(bool light) => light ? Color.FromArgb(140, 140, 140) : Color.FromArgb(120, 120, 120);
+    public static Color Warning(bool light) => light ? Color.FromArgb(0xB2, 0x6B, 0x00) : Color.FromArgb(0xF0, 0xC0, 0x60);
+    public static Color Error(bool light) => light ? Color.FromArgb(0xC4, 0x2B, 0x1C) : Color.FromArgb(0xF0, 0x70, 0x70);
+}
+
+static class Gfx
+{
+    public static GraphicsPath Round(RectangleF r, float radius)
+    {
+        float d = radius * 2;
+        var p = new GraphicsPath();
+        p.AddArc(r.X, r.Y, d, d, 180, 90);
+        p.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+        p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+        p.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+        p.CloseFigure();
+        return p;
+    }
+}
+
+static class Win11
+{
+    const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll")]
+    static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
+    // Asks DWM to round the window's corners. No-op on Windows 10.
+    public static void RoundCorners(Control c)
+    {
+        if (!c.IsHandleCreated) return;
+        int pref = DWMWCP_ROUND;
+        try { DwmSetWindowAttribute(c.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int)); }
+        catch { /* older Windows: ignore */ }
+    }
+}
+
+// A flat, theme-aware menu renderer that mimics the Windows 11 menu look:
+// solid background, rounded inset highlight, no 3-D borders.
+sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
+{
+    readonly bool _light;
+
+    public ModernMenuRenderer(bool light) : base(new ModernColors(light))
+    {
+        _light = light;
+        RoundedEdges = false;
+    }
+
+    void FillBack(ToolStripRenderEventArgs e)
+    {
+        using var b = new SolidBrush(Theme.Back(_light));
+        e.Graphics.FillRectangle(b, e.AffectedBounds);
+    }
+
+    protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e) => FillBack(e);
+
+    protected override void OnRenderImageMargin(ToolStripRenderEventArgs e) => FillBack(e);
+
+    protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+    {
+        using var pen = new Pen(Theme.Line(_light));
+        var r = e.AffectedBounds;
+        e.Graphics.DrawRectangle(pen, r.X, r.Y, r.Width - 1, r.Height - 1);
+    }
+
+    protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+    {
+        if (!e.Item.Selected || !e.Item.Enabled) return;
+        var r = new Rectangle(4, 1, e.Item.Width - 8, e.Item.Height - 2);
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        using var b = new SolidBrush(Theme.Hover(_light));
+        using var path = Gfx.Round(r, 6);
+        e.Graphics.FillPath(b, path);
+    }
+
+    protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+    {
+        e.TextColor = e.Item.Enabled ? Theme.Fore(_light) : Theme.Disabled(_light);
+        base.OnRenderItemText(e);
+    }
+
+    protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
+    {
+        var r = e.Item.Bounds;
+        int y = r.Height / 2;
+        using var pen = new Pen(Theme.Line(_light));
+        e.Graphics.DrawLine(pen, r.Left + 8, y, r.Right - 8, y);
+    }
+
+    protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
+    {
+        // Draw a simple check glyph in the foreground color.
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        var r = e.ImageRectangle;
+        using var pen = new Pen(Theme.Fore(_light), 1.6f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        float x = r.X + r.Width * 0.18f, y = r.Y + r.Height * 0.52f;
+        e.Graphics.DrawLines(pen, new[]
+        {
+            new PointF(x, y),
+            new PointF(x + r.Width * 0.22f, y + r.Height * 0.22f),
+            new PointF(x + r.Width * 0.62f, y - r.Height * 0.30f),
+        });
+    }
+
+    sealed class ModernColors : ProfessionalColorTable
+    {
+        readonly bool _light;
+        public ModernColors(bool light) { _light = light; UseSystemColors = false; }
+        public override Color ToolStripDropDownBackground => Theme.Back(_light);
+        public override Color ImageMarginGradientBegin => Theme.Back(_light);
+        public override Color ImageMarginGradientMiddle => Theme.Back(_light);
+        public override Color ImageMarginGradientEnd => Theme.Back(_light);
+        public override Color MenuBorder => Theme.Line(_light);
+        public override Color MenuItemBorder => Color.Transparent;
+        public override Color MenuItemSelected => Theme.Hover(_light);
+    }
+}
+
+// Modal dialog that captures the next modifier+key combo as a hotkey string.
+static class HotkeyDialog
+{
+    public static string? Ask(string current)
+    {
+        bool light = Theme.IsLight;
+        using var f = new Form
+        {
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            Text = "Set hotkey",
+            StartPosition = FormStartPosition.CenterScreen,
+            MinimizeBox = false,
+            MaximizeBox = false,
+            ShowInTaskbar = false,
+            ClientSize = new Size(340, 130),
+            BackColor = Theme.Back(light),
+            ForeColor = Theme.Fore(light),
+            KeyPreview = true,
+            TopMost = true,
+        };
+        var label = new Label
+        {
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font("Segoe UI", 10F),
+            Text = $"Current:  {current}\n\nPress a new shortcut\n(modifier + letter / digit / F-key).\nEsc to cancel.",
+        };
+        f.Controls.Add(label);
+
+        string? result = null;
+        f.KeyDown += (s, e) =>
+        {
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+
+            if (e.KeyCode == Keys.Escape) { f.DialogResult = DialogResult.Cancel; return; }
+            if (e.KeyCode is Keys.Menu or Keys.ShiftKey or Keys.ControlKey or Keys.LWin or Keys.RWin)
+                return; // a bare modifier; wait for the real key
+
+            // HotKey owns the grammar; the Win key isn't in KeyEventArgs so we poll it.
+            string? spec = HotKey.FromKeyEvent(e.KeyCode, e.Control, e.Alt, e.Shift, WinDown());
+            if (spec is null)
+            {
+                label.Text = "Need a modifier (Ctrl/Alt/Shift/Win) plus a\nletter, digit, or F-key. Try again.";
+                return;
+            }
+            result = spec;
+            f.DialogResult = DialogResult.OK;
+        };
+
+        return f.ShowDialog() == DialogResult.OK ? result : null;
+    }
+
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vKey);
+    static bool WinDown() => (GetAsyncKeyState(0x5B) & 0x8000) != 0 || (GetAsyncKeyState(0x5C) & 0x8000) != 0;
+}
+
 // A small, silent, self-dismissing pill near the bottom-center of the screen,
 // styled like the Windows virtual-desktop switch indicator. It's an ordinary
 // borderless Form, so it makes no sound and never stacks in the Action Center.
@@ -334,55 +563,86 @@ sealed class ToastForm : Form
     readonly System.Windows.Forms.Timer _life = new() { Interval = 1800 };
     readonly string _message;
     readonly Color _fg;
-    const int Radius = 20;
+    readonly Color _back;
+    const int Radius = 9;     // squarish, like the Windows desktop-switch indicator
+    const int PadX = 30, PadY = 16;
 
-    public ToastForm(string message, Color fg)
+    public ToastForm(string message, Color fg, Color back)
     {
         _message = message;
         _fg = fg;
+        _back = back;
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
-        DoubleBuffered = true;
-        BackColor = Color.FromArgb(0x26, 0x26, 0x26);
         Font = new Font("Segoe UI", 11F);
 
         var text = TextRenderer.MeasureText(_message, Font);
-        Size = new Size(Math.Max(text.Width + 64, 130), Math.Max(text.Height + 32, 52));
+        Size = new Size(Math.Max(text.Width + PadX * 2, 120), Math.Max(text.Height + PadY * 2, 46));
 
         var wa = Screen.PrimaryScreen!.WorkingArea;
         Location = new Point(wa.Left + (wa.Width - Width) / 2, wa.Bottom - Height - 12);
-        Region = new Region(Rounded(new Rectangle(0, 0, Width, Height), Radius));
 
-        Click += (_, _) => Close();
         _life.Tick += (_, _) => { _life.Stop(); Close(); };
     }
 
-    static GraphicsPath Rounded(Rectangle r, int radius)
+    // Render the pill into a 32bpp bitmap and push it to the layered window,
+    // giving per-pixel alpha (smooth corners + translucency).
+    void RenderLayered()
     {
-        int d = radius * 2;
-        var p = new GraphicsPath();
-        p.AddArc(r.X, r.Y, d, d, 180, 90);
-        p.AddArc(r.Right - d - 1, r.Y, d, d, 270, 90);
-        p.AddArc(r.Right - d - 1, r.Bottom - d - 1, d, d, 0, 90);
-        p.AddArc(r.X, r.Bottom - d - 1, d, d, 90, 90);
-        p.CloseFigure();
-        return p;
+        using var bmp = new Bitmap(Width, Height, PixelFormat.Format32bppPArgb);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            g.Clear(Color.Transparent);
+
+            var rect = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
+            using (var fill = new SolidBrush(_back))
+            using (var path = Gfx.Round(rect, Radius))
+                g.FillPath(fill, path);
+
+            using var sf = new StringFormat
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center,
+                FormatFlags = StringFormatFlags.NoWrap,
+            };
+            using var textBrush = new SolidBrush(_fg);
+            g.DrawString(_message, Font, textBrush, new RectangleF(0, 0, Width, Height), sf);
+        }
+        PushLayered(bmp);
     }
 
-    protected override void OnPaint(PaintEventArgs e)
+    void PushLayered(Bitmap bmp)
     {
-        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-        // Faint border for definition against dark backgrounds.
-        using (var path = Rounded(new Rectangle(0, 0, Width - 1, Height - 1), Radius))
-        using (var pen = new Pen(Color.FromArgb(0x3C, 0x3C, 0x3C)))
-            e.Graphics.DrawPath(pen, path);
-
-        TextRenderer.DrawText(e.Graphics, _message, Font, ClientRectangle, _fg,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        IntPtr screenDc = GetDC(IntPtr.Zero);
+        IntPtr memDc = CreateCompatibleDC(screenDc);
+        IntPtr hBmp = bmp.GetHbitmap(Color.FromArgb(0));
+        IntPtr oldBmp = SelectObject(memDc, hBmp);
+        try
+        {
+            var size = new SIZE { cx = Width, cy = Height };
+            var src = new POINT { x = 0, y = 0 };
+            var pos = new POINT { x = Left, y = Top };
+            var blend = new BLENDFUNCTION
+            {
+                BlendOp = AC_SRC_OVER,
+                BlendFlags = 0,
+                SourceConstantAlpha = 255,
+                AlphaFormat = AC_SRC_ALPHA,
+            };
+            UpdateLayeredWindow(Handle, screenDc, ref pos, ref size, memDc, ref src, 0, ref blend, ULW_ALPHA);
+        }
+        finally
+        {
+            SelectObject(memDc, oldBmp);
+            DeleteObject(hBmp);
+            DeleteDC(memDc);
+            ReleaseDC(IntPtr.Zero, screenDc);
+        }
     }
 
     // Don't steal focus from the foreground app when shown.
@@ -392,9 +652,10 @@ sealed class ToastForm : Form
     {
         get
         {
-            const int WS_EX_TOPMOST = 0x08, WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
+            const int WS_EX_LAYERED = 0x00080000, WS_EX_TOPMOST = 0x08,
+                      WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
             var cp = base.CreateParams;
-            cp.ExStyle |= WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+            cp.ExStyle |= WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
             return cp;
         }
     }
@@ -402,7 +663,15 @@ sealed class ToastForm : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
+        RenderLayered();
         _life.Start();
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        const int WM_LBUTTONUP = 0x0202;
+        if (m.Msg == WM_LBUTTONUP) { Close(); return; }
+        base.WndProc(ref m);
     }
 
     protected override void Dispose(bool disposing)
@@ -410,6 +679,26 @@ sealed class ToastForm : Form
         if (disposing) _life.Dispose();
         base.Dispose(disposing);
     }
+
+    // ---- layered-window interop ----
+    const byte AC_SRC_OVER = 0x00, AC_SRC_ALPHA = 0x01;
+    const int ULW_ALPHA = 0x02;
+
+    [StructLayout(LayoutKind.Sequential)] struct SIZE { public int cx, cy; }
+    [StructLayout(LayoutKind.Sequential)] struct POINT { public int x, y; }
+    [StructLayout(LayoutKind.Sequential)]
+    struct BLENDFUNCTION { public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat; }
+
+    [DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+    [DllImport("gdi32.dll")] static extern IntPtr CreateCompatibleDC(IntPtr hDC);
+    [DllImport("gdi32.dll")] static extern bool DeleteDC(IntPtr hDC);
+    [DllImport("gdi32.dll")] static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
+    [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr hObject);
+
+    [DllImport("user32.dll")]
+    static extern bool UpdateLayeredWindow(IntPtr hwnd, IntPtr hdcDst, ref POINT pptDst, ref SIZE psize,
+        IntPtr hdcSrc, ref POINT pptSrc, int crKey, ref BLENDFUNCTION pblend, int dwFlags);
 }
 
 // Draws a simple speaker icon at runtime so we don't ship an .ico file.
@@ -597,6 +886,33 @@ static class HotKey
         }
         return false;
     }
+
+    // Build a canonical spec ("ctrl+alt+o") from a key event, or null if the key
+    // isn't supported or no modifier is held. Output is always TryParse-able.
+    public static string? FromKeyEvent(Keys keyCode, bool ctrl, bool alt, bool shift, bool win)
+    {
+        string? key = Token(keyCode);
+        if (key is null) return null;
+
+        var parts = new List<string>(4);
+        if (ctrl) parts.Add("ctrl");
+        if (alt) parts.Add("alt");
+        if (shift) parts.Add("shift");
+        if (win) parts.Add("win");
+        if (parts.Count == 0) return null;
+
+        parts.Add(key);
+        return string.Join("+", parts);
+    }
+
+    static string? Token(Keys k) => k switch
+    {
+        >= Keys.A and <= Keys.Z => char.ToLowerInvariant((char)k).ToString(),
+        >= Keys.D0 and <= Keys.D9 => ((char)('0' + (k - Keys.D0))).ToString(),
+        >= Keys.NumPad0 and <= Keys.NumPad9 => ((char)('0' + (k - Keys.NumPad0))).ToString(),
+        >= Keys.F1 and <= Keys.F12 => "f" + (k - Keys.F1 + 1),
+        _ => null,
+    };
 }
 
 // ---------------------------------------------------------------------------
