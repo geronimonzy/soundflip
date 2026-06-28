@@ -24,6 +24,10 @@
     <PackageReference Include="AudioSwitcher.AudioApi.CoreAudio" Version="4.0.0-alpha5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="audsw.Tests/**/*.cs" />
+  </ItemGroup>
+
   <!-- The package targets .NET Framework; it works fine on net8-windows, so
        silence the cross-targeting restore warning. -->
   <PropertyGroup>
