@@ -59,17 +59,25 @@ public sealed class CommandLineTests
         Assert.Equal(AudioKind.Input, command.DeviceKind);
     }
 
-    [Theory]
-    [InlineData(new string[] { "cycle" }, CycleScope.Outputs)]
-    [InlineData(new string[] { "cycle", "outputs" }, CycleScope.Outputs)]
-    [InlineData(new string[] { "cycle", "inputs" }, CycleScope.Inputs)]
-    [InlineData(new string[] { "cycle", "pairs" }, CycleScope.Pairs)]
-    public void Parse_Cycle_ResolvesScope(string[] args, CycleScope expected)
+    [Fact]
+    public void Parse_Cycle_DefaultsToOutputs()
     {
-        var command = CommandLine.Parse(args, @"C:\work");
+        var command = CommandLine.Parse(["cycle"], @"C:\work");
 
         Assert.Equal(Command.Cycle, command.Kind);
-        Assert.Equal(expected, command.Scope);
+        Assert.Equal(CycleScope.Outputs, command.Scope);
+    }
+
+    [Fact]
+    public void Parse_Cycle_Inputs()
+    {
+        Assert.Equal(CycleScope.Inputs, CommandLine.Parse(["cycle", "inputs"], @"C:\work").Scope);
+    }
+
+    [Fact]
+    public void Parse_Cycle_Pairs()
+    {
+        Assert.Equal(CycleScope.Pairs, CommandLine.Parse(["cycle", "pairs"], @"C:\work").Scope);
     }
 
     [Fact]
