@@ -1,15 +1,12 @@
-using System.Windows.Forms;
-using AudioSwitcher.AudioApi;
 using AudioSwitcher.AudioApi.CoreAudio;
 
-internal static class Program
+// Console-mode command handlers. The app is a GUI subsystem exe, so we attach to
+// the parent console first to make Console output visible when run from a shell.
+static class Cli
 {
-    [STAThread]
-    static int Main(string[] args) => Run(args);
-
-    static int Run(string[] args)
+    public static int Run(ParsedCommand command)
     {
-        var command = CommandLine.Parse(args, Environment.CurrentDirectory);
+        Win32.AttachConsole(Win32.ATTACH_PARENT_PROCESS);
 
         try
         {
@@ -18,8 +15,6 @@ internal static class Program
                 Command.List => List(command.DeviceKind),
                 Command.Set => Set(command.DeviceKind, command.DeviceQuery),
                 Command.Cycle => Cycle(command.Scope),
-                Command.Tray => RunTrayApp(),
-                Command.ExportAssets => ExportAssets(command.TargetDirectory),
                 Command.Help => Help(null),
                 Command.Unknown => Help(command.BadCommand),
                 _ => Help(null),
@@ -38,7 +33,6 @@ internal static class Program
             Console.Error.WriteLine($"unknown command: {badCommand}");
 
         Console.WriteLine(CommandLine.HelpText(SettingsStore.SettingsPath));
-
         return string.IsNullOrWhiteSpace(badCommand) ? 0 : 2;
     }
 
@@ -122,58 +116,4 @@ internal static class Program
     }
 
     static string Word(AudioKind kind) => kind == AudioKind.Output ? "output" : "input";
-
-    static int ExportAssets(string? targetDirectory)
-    {
-        targetDirectory ??= Path.Combine(Environment.CurrentDirectory, "Store", "Assets");
-
-        StoreAssetExporter.Export(targetDirectory);
-        Console.WriteLine("-> " + targetDirectory);
-        return 0;
-    }
-
-    static int RunTrayApp()
-    {
-        var settings = SettingsStore.Load();
-        HideOwnConsoleWindow();
-
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-                Application.SetHighDpiMode(HighDpiMode.SystemAware);
-                Application.Run(new TrayContext(settings));
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-                MessageBox.Show(ex.Message, AppMetadata.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-            throw new InvalidOperationException("tray app failed", failure);
-
-        return 0;
-    }
-
-    static void HideOwnConsoleWindow()
-    {
-        // Hide the console only when we own it alone (double-click / VBS launch);
-        // leave an interactive terminal we were started from untouched.
-        uint[] buffer = new uint[2];
-        uint count = NativeMethods.GetConsoleProcessList(buffer, (uint)buffer.Length);
-        if (count <= 1)
-        {
-            IntPtr hwnd = NativeMethods.GetConsoleWindow();
-            if (hwnd != IntPtr.Zero) NativeMethods.ShowWindow(hwnd, NativeMethods.SW_HIDE);
-        }
-    }
 }

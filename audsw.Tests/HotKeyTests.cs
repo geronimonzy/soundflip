@@ -1,5 +1,3 @@
-using System.Windows.Forms;
-
 namespace audsw.Tests;
 
 public sealed class HotKeyTests
@@ -36,7 +34,8 @@ public sealed class HotKeyTests
     [Fact]
     public void FromKeyEvent_CanonicalizesModifierOrder()
     {
-        string? spec = HotKey.FromKeyEvent(Keys.F4, ctrl: false, alt: true, shift: true, win: true);
+        // 0x73 is the VK code for F4.
+        string? spec = HotKey.FromKeyEvent(0x73, ctrl: false, alt: true, shift: true, win: true);
 
         Assert.Equal("alt+shift+win+f4", spec);
     }

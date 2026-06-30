@@ -4,7 +4,6 @@ internal enum Command
     List,
     Set,
     Cycle,
-    ExportAssets,
     Help,
     Unknown,
 }
@@ -15,14 +14,13 @@ internal enum CycleScope { Outputs, Inputs, Pairs }
 internal sealed record ParsedCommand(
     Command Kind,
     string? DeviceQuery = null,
-    string? TargetDirectory = null,
     string? BadCommand = null,
     AudioKind DeviceKind = AudioKind.Output,
     CycleScope Scope = CycleScope.Outputs);
 
 internal static class CommandLine
 {
-    public static ParsedCommand Parse(IReadOnlyList<string> args, string currentDirectory)
+    public static ParsedCommand Parse(IReadOnlyList<string> args)
     {
         if (args.Count == 0) return new ParsedCommand(Command.Tray);
 
@@ -33,7 +31,6 @@ internal static class CommandLine
             "list" => new ParsedCommand(Command.List, DeviceKind: ParseDeviceKind(Token(args, 1))),
             "set" => ParseSet(args),
             "cycle" => new ParsedCommand(Command.Cycle, Scope: ParseScope(Token(args, 1))),
-            "export-assets" => new ParsedCommand(Command.ExportAssets, TargetDirectory: ResolveAssetDirectory(args, currentDirectory)),
             "help" or "/?" or "-?" or "--help" => new ParsedCommand(Command.Help),
             _ => new ParsedCommand(Command.Unknown, BadCommand: args[0]),
         };
@@ -70,7 +67,6 @@ internal static class CommandLine
           audsw cycle [outputs|inputs|pairs]
                                        advance the chosen ring to its next device
           audsw daemon                 alias for launching the tray app
-          audsw export-assets <dir>    generate default Microsoft Store logo assets
           audsw help                   show this help text
 
         Settings file:
@@ -91,7 +87,4 @@ internal static class CommandLine
         string joined = string.Join(' ', parts).Trim();
         return joined.Length == 0 ? null : joined;
     }
-
-    static string ResolveAssetDirectory(IReadOnlyList<string> args, string currentDirectory) =>
-        JoinArgs(args, 1) ?? Path.Combine(currentDirectory, "Store", "Assets");
 }
