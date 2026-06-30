@@ -2,24 +2,47 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Drawing;
 
-// Hidden message-only window that receives the global hotkey.
-sealed class HotkeyWindow : NativeWindow, IDisposable
+// Hidden message-only window that hosts any number of global hotkeys, each mapped
+// to its own action. Bindings are registered independently so one conflict does
+// not disable the rest.
+sealed class HotkeyManager : NativeWindow, IDisposable
 {
-    public event Action? Pressed;
-
     const int WM_HOTKEY = 0x0312;
-    const int ID = 1;
 
-    public HotkeyWindow(uint mods, uint vk)
+    readonly Dictionary<int, Action> _actions = new();
+    int _nextId = 1;
+
+    public HotkeyManager()
     {
         CreateHandle(new CreateParams { Parent = (IntPtr)(-3) }); // HWND_MESSAGE
-        if (!NativeMethods.RegisterHotKey(Handle, ID, mods | NativeMethods.MOD_NOREPEAT, vk))
-            throw new InvalidOperationException("hotkey already in use");
+    }
+
+    // Register one binding. Returns false (without throwing) if the spec is invalid
+    // or the combo is already taken by another app, so callers can warn and move on.
+    public bool Register(string spec, Action onPressed)
+    {
+        if (!HotKey.TryParse(spec, out uint mods, out uint vk)) return false;
+
+        int id = _nextId++;
+        if (!NativeMethods.RegisterHotKey(Handle, id, mods | NativeMethods.MOD_NOREPEAT, vk))
+            return false;
+
+        _actions[id] = onPressed;
+        return true;
+    }
+
+    // Unregister every binding (used before re-applying changed settings).
+    public void Clear()
+    {
+        foreach (int id in _actions.Keys)
+            NativeMethods.UnregisterHotKey(Handle, id);
+        _actions.Clear();
     }
 
     protected override void WndProc(ref Message m)
     {
-        if (m.Msg == WM_HOTKEY) Pressed?.Invoke();
+        if (m.Msg == WM_HOTKEY && _actions.TryGetValue((int)m.WParam, out var action))
+            action();
         base.WndProc(ref m);
     }
 
@@ -27,7 +50,7 @@ sealed class HotkeyWindow : NativeWindow, IDisposable
     {
         if (Handle != IntPtr.Zero)
         {
-            NativeMethods.UnregisterHotKey(Handle, ID);
+            Clear();
             DestroyHandle();
         }
     }

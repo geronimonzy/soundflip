@@ -19,6 +19,57 @@ public sealed class CommandLineTests
 
         Assert.Equal(Command.Set, command.Kind);
         Assert.Equal("USB DAC", command.DeviceQuery);
+        Assert.Equal(AudioKind.Output, command.DeviceKind);
+    }
+
+    [Fact]
+    public void Parse_Set_InputKind_ConsumesKindWord()
+    {
+        var command = CommandLine.Parse(["set", "input", "Yeti", "Mic"], @"C:\work");
+
+        Assert.Equal(Command.Set, command.Kind);
+        Assert.Equal(AudioKind.Input, command.DeviceKind);
+        Assert.Equal("Yeti Mic", command.DeviceQuery);
+    }
+
+    [Fact]
+    public void Parse_Set_OutputKind_ConsumesKindWord()
+    {
+        var command = CommandLine.Parse(["set", "output", "Speakers"], @"C:\work");
+
+        Assert.Equal(AudioKind.Output, command.DeviceKind);
+        Assert.Equal("Speakers", command.DeviceQuery);
+    }
+
+    [Fact]
+    public void Parse_List_DefaultsToOutputs()
+    {
+        var command = CommandLine.Parse(["list"], @"C:\work");
+
+        Assert.Equal(Command.List, command.Kind);
+        Assert.Equal(AudioKind.Output, command.DeviceKind);
+    }
+
+    [Fact]
+    public void Parse_List_Inputs()
+    {
+        var command = CommandLine.Parse(["list", "inputs"], @"C:\work");
+
+        Assert.Equal(Command.List, command.Kind);
+        Assert.Equal(AudioKind.Input, command.DeviceKind);
+    }
+
+    [Theory]
+    [InlineData(new string[] { "cycle" }, CycleScope.Outputs)]
+    [InlineData(new string[] { "cycle", "outputs" }, CycleScope.Outputs)]
+    [InlineData(new string[] { "cycle", "inputs" }, CycleScope.Inputs)]
+    [InlineData(new string[] { "cycle", "pairs" }, CycleScope.Pairs)]
+    public void Parse_Cycle_ResolvesScope(string[] args, CycleScope expected)
+    {
+        var command = CommandLine.Parse(args, @"C:\work");
+
+        Assert.Equal(Command.Cycle, command.Kind);
+        Assert.Equal(expected, command.Scope);
     }
 
     [Fact]

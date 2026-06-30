@@ -1,135 +1,209 @@
-# GitHub CI/CD Plan for audsw
+# Settings Window Redesign Plan for audsw
 
 ## Goal
-Add GitHub Actions that validate the Windows app on GitHub-hosted runners, run real unit tests for logic that can be isolated from Windows shell/audio state, build the published app, and automatically create GitHub Releases from version tags.
+Replace the tray-heavy configuration model with a reusable Settings window, add ordered output/input switching with optional per-device hotkeys, and keep the tray menu minimal while preserving fast cycling behavior.
 
 ## Resolved Scope
-- CI runs on:
-  - pull requests targeting `main`
-  - pushes to `main`
-- Runners: GitHub-hosted Windows runners
-- Tests: add a real unit test project for pure logic
-- Release trigger: pushed version tags such as `v1.2.3`
-- Release version source of truth: git tag only
-- Release payload: ZIP built from published `dist/`
-- Out of scope for this first pipeline:
-  - Microsoft Store submission automation
-  - MSIX signing/publishing
-  - tray UI end-to-end automation
-  - hardware-dependent audio switching tests
+- Tray menu keeps only:
+  - `Change output`
+  - `Change input`
+  - `Settings`
+  - `Exit`
+- Double-click tray icon continues to run `Change output`.
+- Settings become a single-instance modeless window.
+- Settings use explicit `Save` / `Cancel`.
+- Closing with the window `X` prompts `Save / Discard / Cancel` when there are unsaved changes.
+- Output and input each use ordered cycle lists.
+- Both output and input switching set both the default and communications roles.
+- Cycle actions skip missing devices and continue.
+- If the current Windows default is outside the enabled configured list, cycle falls back to the first enabled available item.
+- Settings move to structured JSON in the existing per-user settings location.
+- No migration from the old flat config is needed.
+- Device entries are stored by stable Windows device ID.
+- Each device entry has:
+  - editable alias
+  - visible full Windows device name
+  - enable checkbox
+  - optional direct hotkey
+  - saved order
+- `Add new device` uses a picker that shows currently available devices of that type only.
+- Already-added devices remain in settings even if later unavailable.
+- Per-device hotkeys are optional.
+- One hotkey may be shared by exactly one output entry and one input entry to switch both in sequence.
+- Any other hotkey duplication is invalid and must block save.
+- Shared paired hotkeys may partially succeed: if one side is unavailable, switch the available side and show a non-blocking warning.
+- Settings save should validate hotkeys by attempting runtime registration before committing.
+- Saving applies immediately to the running tray app with no restart.
+- Autostart must support both:
+  - packaged/MSIX builds via `StartupTask`
+  - unpackaged ZIP builds via Startup-folder launcher/shortcut behavior
 
-## Current Repo Constraints
-- The app is Windows-only: `net8.0-windows` + WinForms.
-- Canonical release build today is `./build.ps1` in PowerShell, which runs `dotnet publish .\audsw.csproj -c Release -o .\dist`.
-- There is no test project yet.
-- Real runtime behavior depends on Windows audio devices, global hotkeys, and tray/shell state, so CI must avoid treating those as reliable automated tests.
-- There is no `.github/workflows/` directory yet.
+## Current Code Constraints
+- Current settings model only stores `device1`, `device2`, and one global hotkey in `SettingsStore.cs`.
+- Current audio logic only supports playback device switching in `Audio.cs` and `Program.cs`.
+- Current tray configuration UI is built directly in `TrayContext.cs`.
+- Current autostart logic is packaged-only in `AutoStart.cs`, while shipped GitHub builds are unpackaged ZIP bundles.
+- Current hotkey runtime only handles one global switching hotkey.
 
-## Implementation Plan
+## Target Behavior
+### Tray
+- `Change output`: cycle through enabled configured output devices in saved order.
+- `Change input`: cycle through enabled configured input devices in saved order.
+- `Settings`: open or focus the single settings window.
+- `Exit`: quit the tray app.
+- Tray double-click: same as `Change output`.
 
-### 1. Create a small testable seam before adding CI
-- Keep the test project focused on logic that does not require audio devices, WinForms handles, or package identity.
-- Test candidates:
-  - command parsing in `Program.cs`
-  - settings parsing/serialization in `SettingsStore.cs`
-  - hotkey parsing/formatting in `Hotkeys.cs`
-  - Store asset generation file/output expectations in `StoreAssets.cs` where feasible
-- Avoid direct unit tests for:
-  - `TrayContext`
-  - `AutoStart` packaged startup task integration
-  - live audio device resolution/switching
-  - message-loop or shell-bound behavior
-- If needed, extract tiny pure helpers so tests can target deterministic logic without instantiating WinForms or touching real hardware state.
+### Settings Window Layout
+Top-to-bottom sections:
+1. Output cycle hotkey
+2. Output device list used for cycling
+3. Input cycle hotkey
+4. Input device list used for cycling
+5. Autostart
+6. About
+7. Save / Cancel actions
 
-### 2. Add a dedicated test project
-- Create a test project under the repo, for example `audsw.Tests`.
-- Target a framework compatible with the testable logic split.
-- Reference the app project or extracted logic assembly as needed.
-- Add focused tests for:
-  - valid and invalid command parsing
-  - settings load/save round-trip with temp files
-  - comment/blank-line handling in config parsing
-  - hotkey grammar acceptance/rejection
-  - canonical hotkey formatting
-  - asset export creates the expected filenames
-- Keep tests deterministic and non-interactive.
+Each output/input device entry includes:
+- enabled checkbox
+- drag handle / drag reorder support
+- alias editor
+- full Windows device name shown below alias
+- optional direct hotkey picker
+- remove action
 
-### 3. Add a CI workflow for validation
-- Add `.github/workflows/ci.yml`.
-- Trigger on:
-  - `pull_request` to `main`
-  - `push` to `main`
-- Use a Windows runner.
-- Steps:
-  - checkout
-  - setup .NET 8 SDK
-  - restore
-  - build the solution/project in Release
-  - run unit tests
-  - publish the app using the repo’s Windows publish flow
-  - run non-interactive smoke checks against published output where safe
-- Recommended smoke checks after publish:
-  - `audsw.exe help`
-  - `audsw.exe export-assets <tempdir>`
-- Do not make CI depend on `audsw list` / `set` / `cycle` succeeding on a GitHub runner, because audio device state is not reliable there.
+Each list includes:
+- `Add new device`
+- reorder support
+- unresolved/missing-device warning state when applicable
 
-### 4. Add a release workflow
-- Add `.github/workflows/release.yml`.
-- Trigger on pushed tags matching `v*`.
-- Use a Windows runner.
-- Steps:
-  - checkout the tagged commit
-  - setup .NET 8 SDK
-  - restore
-  - build
-  - run unit tests
-  - publish via the repo’s Windows publish flow
-  - package the contents of `dist/` into a ZIP named from the tag, for example `audsw-v1.2.3-win-x64.zip`
-  - create or update the GitHub Release for that tag
-  - upload the ZIP as a release asset
-- Keep the git tag as the release version source of truth in this first version.
-- Do not fail the release based on csproj version matching yet.
+### Hotkey Rules
+- Separate top-level cycle hotkeys for output and input.
+- Optional per-device direct hotkeys.
+- Duplicates are invalid except one explicit paired case:
+  - exactly one output entry + exactly one input entry may share the same hotkey
+- Save must fail if any configured hotkey:
+  - conflicts internally outside the allowed paired case
+  - cannot be registered on the current machine
+- Save success must atomically replace old runtime registrations with the new set.
 
-### 5. Keep workflow responsibilities clear
-- CI workflow responsibility:
-  - validate code on `main` and PRs
-  - fail fast on compile/test/smoke-check issues
-- Release workflow responsibility:
-  - validate the tagged revision again
-  - produce the downloadable artifact
-  - publish the GitHub Release asset
-- Do not combine PR CI and tagged release logic into one large workflow unless there is a strong reason.
+### Switching Rules
+- Output cycle uses enabled output entries only.
+- Input cycle uses enabled input entries only.
+- Missing/unavailable entries are skipped during cycle.
+- If current system default is not represented in the enabled available list, the next cycle action selects the first enabled available entry.
+- Direct per-device hotkey switches that exact device.
+- Shared output+input hotkey switches output first, then input.
+- If one side of a shared hotkey is unavailable, still switch the available side and show a non-blocking warning.
 
-### 6. Artifact conventions
-- Release asset should be a ZIP of the built `dist/` directory.
-- Include at minimum:
-  - `audsw.exe`
-  - `start-daemon.vbs`
-- Recommended artifact naming:
-  - `audsw-<tag>-win-x64.zip`
-- Keep naming stable so future release consumers can script against it.
+## Data Model Changes
+Replace the flat settings model with JSON.
 
-### 7. GitHub configuration after workflows land
-- In GitHub repo settings, require the CI workflow as a status check for `main`.
-- Restrict release creation to version tags that point to validated commits.
-- No secrets are required for the first GitHub Release pipeline if it uses the default `GITHUB_TOKEN` only.
-- Store signing/secrets can be added later in a separate pipeline when publisher metadata and MSIX signing are ready.
+Suggested shape:
+- `outputCycleHotkey`
+- `inputCycleHotkey`
+- `autostartEnabled`
+- `outputDevices`: array of entries
+- `inputDevices`: array of entries
 
-## Risks To Manage
-- The repo currently has no tests, so the first implementation step must avoid trying to test WinForms/audio behavior directly.
-- `System.Drawing` and asset generation should only be validated on Windows runners.
-- `AudioSwitcher.AudioApi*` uses older alpha packages and undocumented Windows audio behavior; CI should not pretend to verify live device switching on shared runners.
-- The app is split into multiple files but still not a multi-project solution; workflow commands should target the actual project shape rather than assuming a solution file exists.
+Each device entry should contain at minimum:
+- `deviceId`
+- `alias`
+- `lastKnownSystemName`
+- `enabled`
+- `hotkey` nullable
+- `order`
+
+Implementation should avoid depending on free-form name matching for configured entries after this redesign.
+
+## Implementation Tasks
+1. Replace the persisted settings model.
+- Introduce a new JSON-backed settings schema and serializer in `SettingsStore.cs`.
+- Remove dependence on the old flat `device1/device2/hotkey` config structure.
+- Keep the same settings file location under `%LocalAppData%\audsw\`.
+
+2. Extend audio support to input devices.
+- Add enumeration, resolution, and switching support for recording/input devices.
+- Add output and input cycle helpers that operate on ordered enabled lists.
+- Add direct-select helpers for individual configured entries.
+- Ensure both default and communications roles are set for both output and input switching.
+
+3. Add a richer device configuration model.
+- Introduce output/input device entry types with stable device IDs, aliases, enabled state, order, and optional hotkey.
+- Track currently unavailable entries without deleting them.
+- Add helpers to build the active cycle sequence from saved config.
+
+4. Replace the current tray configuration UX.
+- Simplify `TrayContext` menu to the four final actions only.
+- Keep double-click behavior mapped to `Change output`.
+- Remove per-device tray submenus and tray-based hotkey editing.
+- Make `Settings` open/focus a single modeless settings window instance.
+
+5. Build the Settings window.
+- Create a reusable modeless settings form.
+- Add output section with cycle hotkey editor and ordered output device list.
+- Add input section with cycle hotkey editor and ordered input device list.
+- Add drag reorder support for both lists.
+- Add alias editing UI while always showing the full Windows device name below.
+- Add enable toggles and remove actions per entry.
+- Add `Add new device` pickers for output and input using currently available devices only.
+- Add Autostart section.
+- Add About section or embedded About panel.
+- Add Save / Cancel buttons and unsaved-changes close prompt.
+
+6. Rework hotkey management.
+- Expand runtime registration from one switch hotkey to:
+  - output cycle hotkey
+  - input cycle hotkey
+  - optional per-device direct hotkeys
+  - allowed shared output+input paired hotkeys
+- Validate conflicts in the editor before save.
+- On save, attempt registration before committing settings.
+- If registration fails, keep the editor open and report the exact conflicting hotkey.
+- On successful save, unregister old hotkeys and register the new set immediately.
+
+7. Rework autostart behavior.
+- Keep packaged builds using `StartupTask`.
+- Reintroduce unpackaged autostart using Startup-folder launcher behavior, likely based on `start-daemon.vbs` or a generated shortcut/launcher.
+- Present one unified Autostart toggle in Settings.
+- Reflect the active mode depending on whether package identity exists.
+
+8. Update runtime save/apply flow.
+- Saving should apply immediately to the running tray app without restart.
+- Refresh cycle behavior, direct-select behavior, autostart state, and tray labels/tooltips as needed.
+- Ensure tray continues running even while the settings window is open.
+
+9. Update tests.
+- Extend deterministic tests for the new JSON settings model.
+- Add pure-logic tests for ordered cycling behavior, skip-missing behavior, paired-hotkey validation rules, and hotkey conflict rules where feasible.
+- Do not attempt hardware/UI end-to-end automation in CI.
+
+10. Update docs after implementation.
+- `README.md`
+- `AGENTS.md`
+- any help text/CLI references affected by the new settings/autostart behavior
+
+## Risks
+- Input-device switching may require API behavior that differs from current playback-only assumptions.
+- Ordered lists plus paired hotkeys introduce more runtime state; save-time validation must remain deterministic.
+- Drag reorder and alias editing increase UI complexity relative to the current tray-only approach.
+- Unpackaged autostart must be restored carefully so it does not regress the packaged path.
+- Since there is no migration, old local configs become irrelevant once the new format ships.
 
 ## Validation Plan
-- CI is green for PRs and pushes to `main`.
-- Unit tests pass on GitHub-hosted Windows.
-- Publish step produces `dist/` successfully on GitHub-hosted Windows.
-- Smoke checks succeed for non-interactive commands.
-- Pushing a tag like `v1.2.3` creates a GitHub Release with a downloadable ZIP artifact.
-- The ZIP can be downloaded and unpacked on Windows, and contains the expected direct-download bundle.
+- Settings file saves and reloads correctly as JSON.
+- Output cycle works with ordered enabled output entries.
+- Input cycle works with ordered enabled input entries.
+- Missing configured devices are skipped without breaking cycle behavior.
+- Direct per-device hotkeys work.
+- Shared output+input hotkeys switch both in sequence and partially succeed when one side is unavailable.
+- Save blocks invalid duplicate hotkeys and unregistrable hotkeys.
+- Save applies changes immediately without app restart.
+- Tray menu is reduced to the four intended items.
+- Double-click still cycles output.
+- Autostart works for both packaged and unpackaged distribution modes.
+- CI remains green after updating tests to the new settings logic.
 
-## Open Questions For Implementation Agent
-- Whether a tiny logic extraction is needed before tests can be added cleanly.
-- Whether smoke checks should call `build.ps1` directly or use raw `dotnet publish` in workflows.
-- Whether to upload CI artifacts on non-tag runs for easier debugging, or only on releases.
+## Out Of Scope
+- Backward migration from the old flat config
+- Microsoft Store packaging/submission changes beyond preserving the packaged autostart path
+- Full end-to-end UI/audio automation in GitHub Actions

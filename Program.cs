@@ -15,9 +15,9 @@ internal static class Program
         {
             return command.Kind switch
             {
-                Command.List => List(),
-                Command.Set => Set(command.DeviceQuery),
-                Command.Cycle => Cycle(),
+                Command.List => List(command.DeviceKind),
+                Command.Set => Set(command.DeviceKind, command.DeviceQuery),
+                Command.Cycle => Cycle(command.Scope),
                 Command.Tray => RunTrayApp(),
                 Command.ExportAssets => ExportAssets(command.TargetDirectory),
                 Command.Help => Help(null),
@@ -42,51 +42,86 @@ internal static class Program
         return string.IsNullOrWhiteSpace(badCommand) ? 0 : 2;
     }
 
-    static int List()
+    static int List(AudioKind kind)
     {
         using var controller = new CoreAudioController();
-        foreach (var device in controller.GetPlaybackDevices(DeviceState.Active).OrderBy(d => d.FullName))
-            Console.WriteLine($"{(device.IsDefaultDevice ? "* " : "  ")}{device.FullName}");
+        var current = Audio.CurrentDefault(controller, kind);
+        foreach (var device in Audio.Devices(controller, kind).OrderBy(d => d.FullName))
+            Console.WriteLine($"{(current != null && device.Id == current.Id ? "* " : "  ")}{device.FullName}");
         return 0;
     }
 
-    static int Set(string? query)
+    static int Set(AudioKind kind, string? query)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            Console.Error.WriteLine("usage: audsw set <name>");
+            Console.Error.WriteLine("usage: audsw set [output|input] <name>");
             return 2;
         }
 
         using var controller = new CoreAudioController();
-        var device = Audio.Resolve(controller, query);
+        var device = Audio.SetTo(controller, kind, query);
         if (device is null)
         {
-            Console.Error.WriteLine($"no active playback device matching \"{query}\"");
+            Console.Error.WriteLine($"no active {Word(kind)} device matching \"{query}\"");
             return 1;
         }
 
-        Audio.MakeDefault(device);
         Console.WriteLine("-> " + device.FullName);
         return 0;
     }
 
-    static int Cycle()
+    static int Cycle(CycleScope scope)
     {
         var settings = SettingsStore.Load();
         using var controller = new CoreAudioController();
-        var target = Audio.DoCycle(controller, settings);
+
+        if (scope == CycleScope.Pairs)
+            return CyclePairs(controller, settings);
+
+        var kind = scope == CycleScope.Inputs ? AudioKind.Input : AudioKind.Output;
+        var ring = (kind == AudioKind.Output ? settings.Outputs : settings.Inputs)
+            .Select(entry => entry.Match).ToList();
+
+        if (ring.Count == 0)
+        {
+            Console.Error.WriteLine($"no {Word(kind)} ring configured. Add devices in the tray Settings window.");
+            return 1;
+        }
+
+        var target = Audio.CycleRing(controller, kind, ring);
         if (target is null)
         {
-            Console.Error.WriteLine(
-                $"could not resolve both devices (device1=\"{settings.Device1}\", device2=\"{settings.Device2}\"). " +
-                $"Run `audsw list` and update {SettingsStore.SettingsPath}.");
+            Console.Error.WriteLine($"none of the configured {Word(kind)} devices are currently active.");
             return 1;
         }
 
         Console.WriteLine("-> " + target.FullName);
         return 0;
     }
+
+    static int CyclePairs(CoreAudioController controller, AppSettings settings)
+    {
+        var pair = Audio.NextPair(controller, settings.Pairs);
+        if (pair is null)
+        {
+            Console.Error.WriteLine("no pairs configured. Add output+input pairs in the tray Settings window.");
+            return 1;
+        }
+
+        var result = Audio.SetPair(controller, pair.Output, pair.Input);
+        if (!result.Any)
+        {
+            Console.Error.WriteLine("neither device in the next pair is currently active.");
+            return 1;
+        }
+
+        Console.WriteLine("-> " + string.Join(" + ",
+            new[] { result.Output?.FullName, result.Input?.FullName }.Where(name => name is not null)));
+        return 0;
+    }
+
+    static string Word(AudioKind kind) => kind == AudioKind.Output ? "output" : "input";
 
     static int ExportAssets(string? targetDirectory)
     {

@@ -1,22 +1,30 @@
 # audsw — minimal Windows audio device switcher
 
-A small Windows utility that lives in the tray, toggles between two playback
-devices on a global hotkey, and still exposes focused CLI commands when needed.
+A small Windows utility that lives in the tray and switches **playback and recording**
+devices on global hotkeys — cycle through a ring of outputs, a ring of inputs, or
+output+input **pairs** — with focused CLI commands when needed. Built for people who
+swap devices constantly on calls, streams, and games.
 
 ## Commands
 
 ```
-audsw                launch the tray app
-audsw list           list active playback devices (* = current default)
-audsw set <name>     set default playback device (case-insensitive substring)
-audsw cycle          toggle between the two configured devices
-audsw daemon         alias for launching the tray app
-audsw export-assets <dir>
-                     generate default Microsoft Store logo assets
-audsw help           show the usage text explicitly
+audsw                          launch the tray app
+audsw list [outputs|inputs]    list active devices (* = current default)
+audsw set [output|input] <name>
+                               set the default device (case-insensitive substring)
+audsw cycle [outputs|inputs|pairs]
+                               advance the chosen ring to its next device
+audsw daemon                   alias for launching the tray app
+audsw export-assets <dir>      generate default Microsoft Store logo assets
+audsw help                     show the usage text explicitly
 ```
 
-Both the *default* and *default communications* roles are set together.
+The scope words are optional and default to outputs, so `audsw list`, `audsw set
+<name>`, and `audsw cycle` behave as before.
+
+Every switch sets both the *default* and *default communications* roles together —
+for outputs **and** inputs — so call/voice apps (Teams, Discord, Zoom, ...) follow
+the change. See `TESTING.md` for the manual verification checklist.
 
 ## Build
 
@@ -39,30 +47,45 @@ dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release
 ```
 
 The test suite covers deterministic logic only: command parsing, settings
-parsing/serialization, hotkey grammar, and Store asset export. It does not try
-to automate tray UI, audio device switching, or packaged startup behavior.
+JSON round-trip and legacy-`.cfg` migration, ring-advance math, hotkey grammar,
+and Store asset export. It does not try to automate tray UI, audio device
+switching, or packaged startup behavior — see `TESTING.md` for the manual pass.
 
 ## Tray app (recommended)
 
 Run `audsw` (or double-click `start-daemon.vbs` for no window) to get a speaker
 icon in the notification area. Right-click it to:
 
-- **Switch now** — toggle between the two devices (same as the hotkey).
-- **Device 1 / Device 2** — pick each device from a live list of your outputs.
-- **Set hotkey...** — press a new modifier+key combo to rebind on the spot.
+- **Cycle output / input / pair** — advance the matching ring (also bound to hotkeys).
+- **Output / Input** — pick any active device from a live list to switch immediately.
+- **Pairs** — apply a configured output+input combination.
+- **Settings…** — manage the output ring, input ring, pairs, and every hotkey in one
+  window: add/remove/reorder devices, build pairs, and assign per-device, per-pair,
+  and cycle hotkeys.
 - **Start with Windows** — available in packaged Store/MSIX builds via the
   Windows startup task model.
 - **About audsw** — version, settings path, and release metadata status.
 - **Exit**.
 
-The menu and the toast follow the Windows light/dark setting automatically, and
-the menu uses a Windows 11 style (rounded, flat, themed).
+The menu, dialogs, and toast follow the Windows light/dark setting automatically, and
+use a Windows 11 style (rounded, flat, themed).
 
-Double-clicking the icon also switches. Every switch pops a small toast showing
-the new device, and the icon tooltip shows the current one.
+Double-clicking the icon cycles the output ring. Every switch pops a small toast
+showing the new device(s), and the icon tooltip shows the current output.
 
-The default hotkey is `Ctrl+Alt+O`. Live settings are stored in
-`%LocalAppData%\audsw\audsw.cfg`.
+### Hotkeys
+
+Three optional ring hotkeys — **cycle outputs** (default `Ctrl+Alt+O`), **cycle
+inputs**, and **cycle pairs** — plus an optional **direct-jump** hotkey on each
+individual device and each pair. Conflicting/unavailable combos are skipped with a
+one-off warning; the rest keep working.
+
+### Settings file
+
+Live settings are stored as JSON at `%LocalAppData%\audsw\audsw.json`. An older
+`audsw.cfg` from a previous build is imported automatically on first launch
+(`device1`/`device2` become the output ring, `hotkey` becomes the cycle-output
+hotkey) and rewritten as JSON. The file is safe to hand-edit.
 
 ## Run windowless at login
 

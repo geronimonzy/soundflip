@@ -10,6 +10,7 @@
     <AssemblyName>audsw</AssemblyName>
     <RootNamespace>AudioSwitcher</RootNamespace>
     <Product>audsw</Product>
+    <Version>1.1.0</Version>
     <Description>Minimal Windows audio output switcher with tray-based device toggling.</Description>
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- Single self-contained .exe, no install / no .NET runtime needed on the machine -->

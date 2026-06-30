@@ -9,11 +9,16 @@ internal enum Command
     Unknown,
 }
 
+// What a list/set command targets, and the input/output rings a cycle walks.
+internal enum CycleScope { Outputs, Inputs, Pairs }
+
 internal sealed record ParsedCommand(
     Command Kind,
     string? DeviceQuery = null,
     string? TargetDirectory = null,
-    string? BadCommand = null);
+    string? BadCommand = null,
+    AudioKind DeviceKind = AudioKind.Output,
+    CycleScope Scope = CycleScope.Outputs);
 
 internal static class CommandLine
 {
@@ -25,29 +30,55 @@ internal static class CommandLine
         return verb switch
         {
             "daemon" or "tray" => new ParsedCommand(Command.Tray),
-            "list" => new ParsedCommand(Command.List),
-            "set" => new ParsedCommand(Command.Set, DeviceQuery: JoinArgs(args, 1)),
-            "cycle" => new ParsedCommand(Command.Cycle),
+            "list" => new ParsedCommand(Command.List, DeviceKind: ParseDeviceKind(Token(args, 1))),
+            "set" => ParseSet(args),
+            "cycle" => new ParsedCommand(Command.Cycle, Scope: ParseScope(Token(args, 1))),
             "export-assets" => new ParsedCommand(Command.ExportAssets, TargetDirectory: ResolveAssetDirectory(args, currentDirectory)),
             "help" or "/?" or "-?" or "--help" => new ParsedCommand(Command.Help),
             _ => new ParsedCommand(Command.Unknown, BadCommand: args[0]),
         };
     }
 
+    // `set [output|input] <name>` -- an explicit kind word is optional and consumes
+    // the first argument; otherwise the whole remainder is the output device name.
+    static ParsedCommand ParseSet(IReadOnlyList<string> args)
+    {
+        string first = (Token(args, 1) ?? string.Empty).ToLowerInvariant();
+        if (first is "output" or "input")
+            return new ParsedCommand(Command.Set, DeviceKind: ParseDeviceKind(first), DeviceQuery: JoinArgs(args, 2));
+
+        return new ParsedCommand(Command.Set, DeviceKind: AudioKind.Output, DeviceQuery: JoinArgs(args, 1));
+    }
+
+    static AudioKind ParseDeviceKind(string? token) =>
+        (token ?? string.Empty).ToLowerInvariant().StartsWith("input") ? AudioKind.Input : AudioKind.Output;
+
+    static CycleScope ParseScope(string? token) => (token ?? string.Empty).ToLowerInvariant() switch
+    {
+        var t when t.StartsWith("input") => CycleScope.Inputs,
+        var t when t.StartsWith("pair") => CycleScope.Pairs,
+        _ => CycleScope.Outputs,
+    };
+
     public static string HelpText(string settingsPath) => $"""
         audsw -- minimal audio device switcher
 
-          audsw                     launch the tray app
-          audsw list                list active playback devices
-          audsw set <name>          set default playback device (substring match)
-          audsw cycle               toggle between the two configured devices
-          audsw daemon              alias for launching the tray app
-          audsw export-assets <dir> generate default Microsoft Store logo assets
-          audsw help                show this help text
+          audsw                        launch the tray app
+          audsw list [outputs|inputs]  list active devices (* = current default)
+          audsw set [output|input] <name>
+                                       set the default device (substring match)
+          audsw cycle [outputs|inputs|pairs]
+                                       advance the chosen ring to its next device
+          audsw daemon                 alias for launching the tray app
+          audsw export-assets <dir>    generate default Microsoft Store logo assets
+          audsw help                   show this help text
 
         Settings file:
           {settingsPath}
         """;
+
+    static string? Token(IReadOnlyList<string> args, int index) =>
+        index < args.Count ? args[index]?.Trim() : null;
 
     static string? JoinArgs(IReadOnlyList<string> args, int startIndex)
     {
