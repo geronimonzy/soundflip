@@ -13,7 +13,7 @@ internal static class Program
             return Cli.Run(command);
 
         WinRT.ComWrappersSupport.InitializeComWrappers();
-        Application.Start(_ =>
+        Application.Start(p =>
         {
             var context = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
             System.Threading.SynchronizationContext.SetSynchronizationContext(context);

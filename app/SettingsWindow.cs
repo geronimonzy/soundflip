@@ -179,7 +179,7 @@ sealed class SettingsWindow : Window
         return grid;
     }
 
-    static Grid Compose(UIElement list, params UIElement[] belowRows)
+    static Grid Compose(FrameworkElement list, params FrameworkElement[] belowRows)
     {
         var grid = new Grid { Margin = new Thickness(4, 12, 4, 4) };
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
