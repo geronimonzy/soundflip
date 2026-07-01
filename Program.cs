@@ -76,16 +76,13 @@ internal static class Program
         var settings = SettingsStore.Load();
         using var controller = new CoreAudioController();
 
-        if (scope == CycleScope.Pairs)
-            return CyclePairs(controller, settings);
-
         var kind = scope == CycleScope.Inputs ? AudioKind.Input : AudioKind.Output;
         var ring = (kind == AudioKind.Output ? settings.Outputs : settings.Inputs)
             .Select(entry => entry.Match).ToList();
 
         if (ring.Count == 0)
         {
-            Console.Error.WriteLine($"no {Word(kind)} ring configured. Add devices in the tray Settings window.");
+            Console.Error.WriteLine($"no {Word(kind)} ring configured. Tick devices in the tray menu.");
             return 1;
         }
 
@@ -97,27 +94,6 @@ internal static class Program
         }
 
         Console.WriteLine("-> " + target.FullName);
-        return 0;
-    }
-
-    static int CyclePairs(CoreAudioController controller, AppSettings settings)
-    {
-        var pair = Audio.NextPair(controller, settings.Pairs);
-        if (pair is null)
-        {
-            Console.Error.WriteLine("no pairs configured. Add output+input pairs in the tray Settings window.");
-            return 1;
-        }
-
-        var result = Audio.SetPair(controller, pair.Output, pair.Input);
-        if (!result.Any)
-        {
-            Console.Error.WriteLine("neither device in the next pair is currently active.");
-            return 1;
-        }
-
-        Console.WriteLine("-> " + string.Join(" + ",
-            new[] { result.Output?.FullName, result.Input?.FullName }.Where(name => name is not null)));
         return 0;
     }
 

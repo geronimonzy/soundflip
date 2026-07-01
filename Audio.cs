@@ -70,44 +70,4 @@ static class Audio
         if (current < 0) return 0;
         return (current + 1) % count;
     }
-
-    // --- IO pair: switch output and/or input together ---
-
-    public readonly record struct PairResult(CoreAudioDevice? Output, CoreAudioDevice? Input)
-    {
-        public bool Any => Output is not null || Input is not null;
-    }
-
-    public static PairResult SetPair(CoreAudioController controller, string output, string input)
-    {
-        CoreAudioDevice? outputDevice = string.IsNullOrWhiteSpace(output) ? null : SetTo(controller, AudioKind.Output, output);
-        CoreAudioDevice? inputDevice = string.IsNullOrWhiteSpace(input) ? null : SetTo(controller, AudioKind.Input, input);
-        return new PairResult(outputDevice, inputDevice);
-    }
-
-    // Index of the pair whose output+input both already match the current defaults,
-    // or -1 if none does (so cycling starts from the first pair).
-    public static int CurrentPairIndex(CoreAudioController controller, IReadOnlyList<PairEntry> pairs)
-    {
-        var output = CurrentDefault(controller, AudioKind.Output);
-        var input = CurrentDefault(controller, AudioKind.Input);
-
-        for (int i = 0; i < pairs.Count; i++)
-            if (PairSideMatches(output, pairs[i].Output) && PairSideMatches(input, pairs[i].Input))
-                return i;
-        return -1;
-    }
-
-    // The pair to switch to when cycling, or null if there are none.
-    public static PairEntry? NextPair(CoreAudioController controller, IReadOnlyList<PairEntry> pairs)
-    {
-        if (pairs.Count == 0) return null;
-        int index = CurrentPairIndex(controller, pairs);
-        return pairs[NextIndex(index, pairs.Count)];
-    }
-
-    static bool PairSideMatches(CoreAudioDevice? device, string match) =>
-        string.IsNullOrWhiteSpace(match)
-            ? device is null
-            : device != null && device.FullName.Contains(match, StringComparison.OrdinalIgnoreCase);
 }

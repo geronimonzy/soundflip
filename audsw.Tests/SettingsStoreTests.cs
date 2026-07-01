@@ -9,32 +9,48 @@ public sealed class SettingsStoreTests
         {
             Outputs =
             {
-                new DeviceEntry { Match = "Speakers", Hotkey = "ctrl+alt+1" },
+                new DeviceEntry { Match = "Speakers" },
                 new DeviceEntry { Match = "Headphones" },
             },
-            Inputs = { new DeviceEntry { Match = "Yeti", Hotkey = "ctrl+alt+2" } },
-            Pairs =
-            {
-                new PairEntry { Name = "Desk", Output = "Speakers", Input = "Yeti", Hotkey = "ctrl+alt+3" },
-            },
+            Inputs = { new DeviceEntry { Match = "Yeti" } },
             CycleOutputs = "ctrl+alt+o",
             CycleInputs = "ctrl+alt+i",
-            CyclePairs = "ctrl+alt+p",
         };
 
         var actual = SettingsStore.Deserialize(SettingsStore.Serialize(settings));
 
         Assert.Equal(2, actual.Outputs.Count);
         Assert.Equal("Speakers", actual.Outputs[0].Match);
-        Assert.Equal("ctrl+alt+1", actual.Outputs[0].Hotkey);
         Assert.Equal("Headphones", actual.Outputs[1].Match);
         Assert.Single(actual.Inputs);
         Assert.Equal("Yeti", actual.Inputs[0].Match);
-        Assert.Single(actual.Pairs);
-        Assert.Equal("Desk", actual.Pairs[0].Name);
-        Assert.Equal("Yeti", actual.Pairs[0].Input);
         Assert.Equal("ctrl+alt+i", actual.CycleInputs);
-        Assert.Equal("ctrl+alt+p", actual.CyclePairs);
+    }
+
+    // Pre-1.1.2 settings carried pairs, cycle-pair hotkeys, and per-device hotkeys;
+    // those must load cleanly (and be dropped) rather than fail deserialization.
+    [Fact]
+    public void Deserialize_IgnoresRetiredPairAndHotkeyProperties()
+    {
+        string json = """
+            {
+              "outputs": [ { "match": "Speakers", "hotkey": "ctrl+alt+1" } ],
+              "inputs": [ { "match": "Yeti", "hotkey": "ctrl+alt+2" } ],
+              "pairs": [ { "name": "Desk", "output": "Speakers", "input": "Yeti", "hotkey": "ctrl+alt+3" } ],
+              "cycleOutputs": "ctrl+alt+o",
+              "cycleInputs": "ctrl+alt+i",
+              "cyclePairs": "ctrl+alt+p"
+            }
+            """;
+
+        var actual = SettingsStore.Deserialize(json);
+
+        Assert.Single(actual.Outputs);
+        Assert.Equal("Speakers", actual.Outputs[0].Match);
+        Assert.Single(actual.Inputs);
+        Assert.Equal("Yeti", actual.Inputs[0].Match);
+        Assert.Equal("ctrl+alt+o", actual.CycleOutputs);
+        Assert.Equal("ctrl+alt+i", actual.CycleInputs);
     }
 
     [Fact]
@@ -53,7 +69,7 @@ public sealed class SettingsStoreTests
         string path = System.IO.Path.Combine(temp.Path, "nested", "audsw.json");
         var expected = new AppSettings
         {
-            Outputs = { new DeviceEntry { Match = "USB DAC", Hotkey = "ctrl+alt+9" } },
+            Outputs = { new DeviceEntry { Match = "USB DAC" } },
             CycleOutputs = "ctrl+alt+0",
         };
 
@@ -62,7 +78,6 @@ public sealed class SettingsStoreTests
 
         Assert.Single(actual.Outputs);
         Assert.Equal("USB DAC", actual.Outputs[0].Match);
-        Assert.Equal("ctrl+alt+9", actual.Outputs[0].Hotkey);
         Assert.Equal("ctrl+alt+0", actual.CycleOutputs);
     }
 
@@ -74,7 +89,6 @@ public sealed class SettingsStoreTests
 
         Assert.Empty(settings.Outputs);
         Assert.Empty(settings.Inputs);
-        Assert.Empty(settings.Pairs);
         Assert.Equal("ctrl+alt+o", settings.CycleOutputs);
     }
 

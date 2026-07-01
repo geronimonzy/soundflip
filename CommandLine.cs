@@ -10,7 +10,7 @@ internal enum Command
 }
 
 // What a list/set command targets, and the input/output rings a cycle walks.
-internal enum CycleScope { Outputs, Inputs, Pairs }
+internal enum CycleScope { Outputs, Inputs }
 
 internal sealed record ParsedCommand(
     Command Kind,
@@ -53,12 +53,8 @@ internal static class CommandLine
     static AudioKind ParseDeviceKind(string? token) =>
         (token ?? string.Empty).ToLowerInvariant().StartsWith("input") ? AudioKind.Input : AudioKind.Output;
 
-    static CycleScope ParseScope(string? token) => (token ?? string.Empty).ToLowerInvariant() switch
-    {
-        var t when t.StartsWith("input") => CycleScope.Inputs,
-        var t when t.StartsWith("pair") => CycleScope.Pairs,
-        _ => CycleScope.Outputs,
-    };
+    static CycleScope ParseScope(string? token) =>
+        (token ?? string.Empty).ToLowerInvariant().StartsWith("input") ? CycleScope.Inputs : CycleScope.Outputs;
 
     public static string HelpText(string settingsPath) => $"""
         audsw -- minimal audio device switcher
@@ -67,8 +63,7 @@ internal static class CommandLine
           audsw list [outputs|inputs]  list active devices (* = current default)
           audsw set [output|input] <name>
                                        set the default device (substring match)
-          audsw cycle [outputs|inputs|pairs]
-                                       advance the chosen ring to its next device
+          audsw cycle [outputs|inputs] advance the chosen ring to its next device
           audsw daemon                 alias for launching the tray app
           audsw export-assets <dir>    generate default Microsoft Store logo assets
           audsw help                   show this help text

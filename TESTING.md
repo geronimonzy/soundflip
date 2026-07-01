@@ -19,16 +19,17 @@ how each app resolves its audio device.
 - [ ] `audsw list inputs` shows capture devices, `*` on the current default.
 - [ ] `audsw set output <name>` changes the default playback device.
 - [ ] `audsw set input <name>` changes the default capture device.
-- [ ] In the tray menu, **Output ▸** / **Input ▸** pick a device and switch immediately.
+- [ ] In the tray menu, **Output ▸** / **Input ▸** list active devices with ● on the
+      current default.
 
-## B. Rings & pairs (configure in tray ▸ Settings…)
+## B. Rings (configure in tray ▸ Output/Input checklists)
 
-- [ ] Add 3 outputs to the output ring; **Cycle output** (and its hotkey) advances
-      through all three and wraps around.
-- [ ] Add 2 inputs to the input ring; **Cycle input** cycles them.
-- [ ] Create 2 pairs (e.g. "Desk" = speakers+webcam mic, "Headset" = headphones+headset mic);
-      **Cycle pair** alternates and each pair's own hotkey jumps straight to it.
-- [ ] Per-device hotkeys jump straight to that device.
+- [ ] Tick 3 outputs in **Output ▸** (menu stays open across clicks); **Cycle output**
+      (and its hotkey) advances through all three and wraps around.
+- [ ] Tick 2 inputs in **Input ▸**; **Cycle input** cycles them.
+- [ ] Unticking a device drops it from the ring on the next cycle; ticks survive a
+      restart (saved immediately).
+- [ ] **Cycle output/input hotkey…** captures a new combo and it works right away.
 - [ ] Assigning a hotkey already taken by another app shows the "in use" warning and
       the other hotkeys still work.
 

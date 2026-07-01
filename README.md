@@ -1,9 +1,9 @@
 # audsw — minimal Windows audio device switcher
 
 A small Windows utility that lives in the tray and switches **playback and recording**
-devices on global hotkeys — cycle through a ring of outputs, a ring of inputs, or
-output+input **pairs** — with focused CLI commands when needed. Built for people who
-swap devices constantly on calls, streams, and games.
+devices on global hotkeys — cycle through a ring of outputs or a ring of inputs,
+picked with checkboxes right in the tray menu — with focused CLI commands when
+needed. Built for people who swap devices constantly on calls, streams, and games.
 
 ## Commands
 
@@ -12,8 +12,7 @@ audsw                          launch the tray app
 audsw list [outputs|inputs]    list active devices (* = current default)
 audsw set [output|input] <name>
                                set the default device (case-insensitive substring)
-audsw cycle [outputs|inputs|pairs]
-                               advance the chosen ring to its next device
+audsw cycle [outputs|inputs]   advance the chosen ring to its next device
 audsw daemon                   alias for launching the tray app
 audsw export-assets <dir>      generate default Microsoft Store logo assets
 audsw help                     show the usage text explicitly
@@ -56,12 +55,11 @@ switching, or packaged startup behavior — see `TESTING.md` for the manual pass
 Run `audsw` (or double-click `start-daemon.vbs` for no window) to get a speaker
 icon in the notification area. Right-click it to:
 
-- **Cycle output / input / pair** — advance the matching ring (also bound to hotkeys).
-- **Output / Input** — pick any active device from a live list to switch immediately.
-- **Pairs** — apply a configured output+input combination.
-- **Settings…** — manage the output ring, input ring, pairs, and every hotkey in one
-  window: add/remove/reorder devices, build pairs, and assign per-device, per-pair,
-  and cycle hotkeys.
+- **Cycle output / input** — advance the matching ring (also bound to hotkeys).
+- **Output / Input** — a live checklist of active devices: tick the ones you want
+  in the cycle ring (the menu stays open for multi-select), ● marks the current
+  default. Changes are saved immediately.
+- **Cycle output/input hotkey…** — capture a new hotkey for either cycle command.
 - **Start with Windows** — available in packaged Store/MSIX builds via the
   Windows startup task model.
 - **About audsw** — version, settings path, and release metadata status.
@@ -75,10 +73,9 @@ showing the new device(s), and the icon tooltip shows the current output.
 
 ### Hotkeys
 
-Three optional ring hotkeys — **cycle outputs** (default `Ctrl+Alt+O`), **cycle
-inputs**, and **cycle pairs** — plus an optional **direct-jump** hotkey on each
-individual device and each pair. Conflicting/unavailable combos are skipped with a
-one-off warning; the rest keep working.
+Two optional ring hotkeys — **cycle outputs** (default `Ctrl+Alt+O`) and **cycle
+inputs** — both set from the tray menu. Conflicting/unavailable combos are skipped
+with a one-off warning; the rest keep working.
 
 ### Settings file
 

@@ -5,7 +5,7 @@ using AudioSwitcher.AudioApi.CoreAudio;
 
 sealed class TrayContext : ApplicationContext
 {
-    AppSettings _settings;
+    readonly AppSettings _settings;
     readonly CoreAudioController _controller = new();
     readonly NotifyIcon _icon;
     readonly HotkeyManager _hotkeys = new();
@@ -32,8 +32,8 @@ sealed class TrayContext : ApplicationContext
         _ = RefreshAutoStartStatusAsync(rebuildMenu: true);
     }
 
-    // Re-apply every hotkey from current settings: the three cycle commands plus
-    // each device/pair direct-jump binding. One warning summarizes any conflicts.
+    // Re-apply the two cycle hotkeys from current settings. One warning summarizes
+    // any conflicts.
     void RebindHotkeys()
     {
         _hotkeys.Clear();
@@ -47,14 +47,6 @@ sealed class TrayContext : ApplicationContext
 
         Bind(_settings.CycleOutputs, CycleOutputs);
         Bind(_settings.CycleInputs, CycleInputs);
-        Bind(_settings.CyclePairs, CyclePairs);
-
-        foreach (var entry in _settings.Outputs)
-            Bind(entry.Hotkey, () => JumpTo(AudioKind.Output, entry.Match));
-        foreach (var entry in _settings.Inputs)
-            Bind(entry.Hotkey, () => JumpTo(AudioKind.Input, entry.Match));
-        foreach (var pair in _settings.Pairs)
-            Bind(pair.Hotkey, () => ApplyPair(pair));
 
         if (failed.Count > 0)
             Notify("Some hotkeys are in use",
@@ -87,15 +79,16 @@ sealed class TrayContext : ApplicationContext
 
         menu.Items.Add(new ToolStripMenuItem(CycleLabel("Cycle output", _settings.CycleOutputs), null, (_, _) => CycleOutputs()));
         menu.Items.Add(new ToolStripMenuItem(CycleLabel("Cycle input", _settings.CycleInputs), null, (_, _) => CycleInputs()));
-        menu.Items.Add(new ToolStripMenuItem(CycleLabel("Cycle pair", _settings.CyclePairs), null, (_, _) => CyclePairs()));
         menu.Items.Add(new ToolStripSeparator());
 
         menu.Items.Add(DeviceMenu("Output", AudioKind.Output));
         menu.Items.Add(DeviceMenu("Input", AudioKind.Input));
-        menu.Items.Add(PairsMenu());
         menu.Items.Add(new ToolStripSeparator());
 
-        menu.Items.Add(new ToolStripMenuItem("Settings...", null, (_, _) => OpenSettings()));
+        menu.Items.Add(new ToolStripMenuItem("Cycle output hotkey...", null,
+            (_, _) => EditCycleHotkey(() => _settings.CycleOutputs, value => _settings.CycleOutputs = value)));
+        menu.Items.Add(new ToolStripMenuItem("Cycle input hotkey...", null,
+            (_, _) => EditCycleHotkey(() => _settings.CycleInputs, value => _settings.CycleInputs = value)));
         menu.Items.Add(new ToolStripSeparator());
 
         var autostart = new ToolStripMenuItem("Start with Windows", null, async (_, _) => await ToggleAutoStartAsync())
@@ -112,24 +105,35 @@ sealed class TrayContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => ExitApp()));
     }
 
-    // Live list of active devices of one kind; checking the current default. Picking
-    // one sets it as default+communications immediately.
+    // Live checklist of active devices of one kind: the check marks membership in
+    // the cycle ring, a "●" prefix marks the current default. Clicking toggles ring
+    // membership (and keeps the menu open for multi-select).
     ToolStripMenuItem DeviceMenu(string label, AudioKind kind)
     {
         var devices = Audio.Devices(_controller, kind).OrderBy(device => device.FullName).ToList();
         var current = Audio.CurrentDefault(_controller, kind);
+        var ring = kind == AudioKind.Output ? _settings.Outputs : _settings.Inputs;
 
         var root = new ToolStripMenuItem(label);
         root.DropDownOpened += (_, _) => Win11.RoundCorners(root.DropDown);
+        root.DropDown.Closing += (_, e) =>
+        {
+            if (e.CloseReason == ToolStripDropDownCloseReason.ItemClicked) e.Cancel = true;
+        };
 
         foreach (var device in devices)
         {
             string name = device.FullName;
-            var item = new ToolStripMenuItem(name)
+            bool isDefault = current != null && device.Id == current.Id;
+            var item = new ToolStripMenuItem((isDefault ? "● " : "") + name)
             {
-                Checked = current != null && device.Id == current.Id,
+                Checked = InRing(ring, name),
             };
-            item.Click += (_, _) => JumpTo(kind, name);
+            item.Click += (_, _) =>
+            {
+                item.Checked = ToggleRing(ring, name);
+                SettingsStore.Save(_settings);
+            };
             root.DropDownItems.Add(item);
         }
 
@@ -139,36 +143,37 @@ sealed class TrayContext : ApplicationContext
         return root;
     }
 
-    ToolStripMenuItem PairsMenu()
-    {
-        var root = new ToolStripMenuItem("Pairs");
-        root.DropDownOpened += (_, _) => Win11.RoundCorners(root.DropDown);
+    static bool InRing(List<DeviceEntry> ring, string deviceName) =>
+        ring.Any(entry => Matches(entry, deviceName));
 
-        foreach (var pair in _settings.Pairs)
+    // Add the device to the ring, or drop every entry that resolves to it. Returns
+    // the new membership state.
+    static bool ToggleRing(List<DeviceEntry> ring, string deviceName)
+    {
+        if (InRing(ring, deviceName))
         {
-            string label = string.IsNullOrWhiteSpace(pair.Name)
-                ? $"{pair.Output} + {pair.Input}"
-                : pair.Name;
-            var item = new ToolStripMenuItem(Truncate(label, 48));
-            item.Click += (_, _) => ApplyPair(pair);
-            root.DropDownItems.Add(item);
+            ring.RemoveAll(entry => Matches(entry, deviceName));
+            return false;
         }
 
-        if (root.DropDownItems.Count == 0)
-            root.DropDownItems.Add(new ToolStripMenuItem("(no pairs - add in Settings)") { Enabled = false });
-
-        return root;
+        ring.Add(new DeviceEntry { Match = deviceName });
+        return true;
     }
 
-    void OpenSettings()
-    {
-        var updated = SettingsWindow.Edit(_controller, _settings);
-        if (updated is null) return;
+    // Same substring semantics as Audio.Resolve, so hand-edited partial matches
+    // still show up checked.
+    static bool Matches(DeviceEntry entry, string deviceName) =>
+        !string.IsNullOrWhiteSpace(entry.Match)
+        && deviceName.Contains(entry.Match, StringComparison.OrdinalIgnoreCase);
 
-        _settings = updated;
+    void EditCycleHotkey(Func<string> get, Action<string> set)
+    {
+        string? picked = HotkeyDialog.Ask(get());
+        if (picked is null) return;
+
+        set(picked);
         SettingsStore.Save(_settings);
         RebindHotkeys();
-        UpdateTooltip();
         BuildMenu();
     }
 
@@ -202,7 +207,7 @@ sealed class TrayContext : ApplicationContext
 
         if (ring.Count == 0)
         {
-            Notify("No " + what + " configured", "Add devices to the " + what + " ring in Settings.", ToolTipIcon.Warning);
+            Notify("No " + what + " configured", "Tick devices to cycle in the tray menu.", ToolTipIcon.Warning);
             return;
         }
 
@@ -215,47 +220,6 @@ sealed class TrayContext : ApplicationContext
 
         UpdateTooltip();
         Notify(kind == AudioKind.Output ? "Audio output" : "Audio input", target.FullName, ToolTipIcon.Info);
-    }
-
-    void CyclePairs()
-    {
-        var pair = Audio.NextPair(_controller, _settings.Pairs);
-        if (pair is null)
-        {
-            Notify("No pairs configured", "Create output+input pairs in Settings.", ToolTipIcon.Warning);
-            return;
-        }
-
-        ApplyPair(pair);
-    }
-
-    void ApplyPair(PairEntry pair)
-    {
-        var result = Audio.SetPair(_controller, pair.Output, pair.Input);
-        if (!result.Any)
-        {
-            Notify("Pair unavailable", "Neither device in this pair is currently active.", ToolTipIcon.Warning);
-            return;
-        }
-
-        UpdateTooltip();
-        string detail = string.Join(
-            "\n",
-            new[] { result.Output?.FullName, result.Input?.FullName }.Where(name => name is not null));
-        Notify(string.IsNullOrWhiteSpace(pair.Name) ? "Pair switched" : pair.Name, detail, ToolTipIcon.Info);
-    }
-
-    void JumpTo(AudioKind kind, string match)
-    {
-        var device = Audio.SetTo(_controller, kind, match);
-        if (device is null)
-        {
-            Notify("Device unavailable", $"\"{match}\" is not currently active.", ToolTipIcon.Warning);
-            return;
-        }
-
-        UpdateTooltip();
-        Notify(kind == AudioKind.Output ? "Audio output" : "Audio input", device.FullName, ToolTipIcon.Info);
     }
 
     void UpdateTooltip()

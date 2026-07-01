@@ -20,17 +20,18 @@
 
 ## Runtime Gotchas
 - No-arg launch is tray-first now; use `audsw help` if you want the usage text explicitly.
-- Live settings are stored per-user at `%LocalAppData%\audsw\audsw.cfg`, not beside the executable.
+- Live settings are stored per-user as JSON at `%LocalAppData%\audsw\audsw.json`, not beside the executable. An older `audsw.cfg` is migrated once on first launch.
 - `audsw` is still built as a console `Exe`, not `WinExe`. Tray launch hides its own console only when it owns that console; `start-daemon.vbs` remains the fully windowless unpackaged launcher.
 - The tray's **Start with Windows** flow is Store/MSIX-oriented and uses `Windows.ApplicationModel.StartupTask`. In unpackaged builds the menu item stays visible but reports that startup is unavailable.
-- Device resolution is case-insensitive substring matching against active playback devices only.
-- Switching sets both the default playback device and the default communications device.
-- `cycle` switches to `device2` only when the current default already matches resolved `device1`; otherwise it falls back to `device1`.
+- Device resolution is case-insensitive substring matching against currently active playback/recording devices.
+- Switching sets both the default role and the default communications role, for outputs and inputs alike.
+- `cycle [outputs|inputs]` advances the matching ring to the next entry after the current default; a default outside the ring restarts at the first entry.
+- There is no settings window: the output/input cycle rings are ticked directly in the tray **Output**/**Input** checklists (saved immediately), and the two cycle hotkeys are set from tray menu items. Pairs and per-device jump hotkeys were removed in 1.1.2; old JSON files containing them still load (the retired properties are ignored).
 
 ## Commands And Config
-- Supported commands: `audsw`, `audsw list`, `audsw set <name>`, `audsw cycle`, `audsw daemon`, `audsw export-assets <dir>`, `audsw help`.
-- `audsw.cfg` only supports `device1`, `device2`, and `hotkey`. Blank lines and `#` comments are ignored.
-- Supported hotkeys are modifier(s) plus `A-Z`, `0-9`, or `F1`-`F12`. Default is `ctrl+alt+o`.
+- Supported commands: `audsw`, `audsw list [outputs|inputs]`, `audsw set [output|input] <name>`, `audsw cycle [outputs|inputs]`, `audsw daemon`, `audsw export-assets <dir>`, `audsw help`.
+- Settings JSON holds `outputs`/`inputs` rings (`match` per entry) plus `cycleOutputs`/`cycleInputs` hotkeys. The legacy `audsw.cfg` (`device1`/`device2`/`hotkey`, `#` comments) is only read for one-time migration.
+- Supported hotkeys are modifier(s) plus `A-Z`, `0-9`, or `F1`-`F12`. Default is `ctrl+alt+o` for cycle-outputs.
 - `Store\Package.appxmanifest.template` is a packaging template, not a finished manifest. It still needs real publisher metadata before submission.
 
 ## Dependency Quirk

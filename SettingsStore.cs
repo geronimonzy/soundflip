@@ -1,31 +1,20 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-// One configured device in a cycle ring, with an optional direct-jump hotkey.
+// One configured device in a cycle ring. Kept as an object (not a bare string)
+// so pre-1.1.2 JSON files, which stored {"match": ..., "hotkey": ...}, still load.
 sealed class DeviceEntry
 {
     public string Match { get; set; } = "";
-    public string Hotkey { get; set; } = "";
-}
-
-// An output+input combination switched together, with an optional hotkey.
-sealed class PairEntry
-{
-    public string Name { get; set; } = "";
-    public string Output { get; set; } = "";
-    public string Input { get; set; } = "";
-    public string Hotkey { get; set; } = "";
 }
 
 sealed class AppSettings
 {
     public List<DeviceEntry> Outputs { get; set; } = new();
     public List<DeviceEntry> Inputs { get; set; } = new();
-    public List<PairEntry> Pairs { get; set; } = new();
 
     public string CycleOutputs { get; set; } = "ctrl+alt+o";
     public string CycleInputs { get; set; } = "";
-    public string CyclePairs { get; set; } = "";
 }
 
 static class SettingsStore

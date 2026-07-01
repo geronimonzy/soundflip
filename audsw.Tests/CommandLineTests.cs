@@ -74,10 +74,11 @@ public sealed class CommandLineTests
         Assert.Equal(CycleScope.Inputs, CommandLine.Parse(["cycle", "inputs"], @"C:\work").Scope);
     }
 
+    // "pairs" was a valid scope before 1.1.2; it now falls back to the default ring.
     [Fact]
-    public void Parse_Cycle_Pairs()
+    public void Parse_Cycle_RetiredPairsScopeFallsBackToOutputs()
     {
-        Assert.Equal(CycleScope.Pairs, CommandLine.Parse(["cycle", "pairs"], @"C:\work").Scope);
+        Assert.Equal(CycleScope.Outputs, CommandLine.Parse(["cycle", "pairs"], @"C:\work").Scope);
     }
 
     [Fact]
