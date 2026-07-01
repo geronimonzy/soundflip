@@ -190,27 +190,25 @@ static class HotkeyDialog
             MaximizeBox = false,
             ShowIcon = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(430, 220),
-            BackColor = Theme.Back(light),
+            ClientSize = new Size(430, 226),
+            BackColor = Theme.Content(light),
             ForeColor = Theme.Fore(light),
             KeyPreview = true,
-            TopMost = true,
         };
 
-        form.Shown += (_, _) => Win11.RoundCorners(form);
+        form.Shown += (_, _) => Win11.ApplyChrome(form, light);
 
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(18),
+            Padding = new Padding(24, 18, 24, 0),
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 4,
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var title = new Label
         {
@@ -233,7 +231,7 @@ static class HotkeyDialog
             AutoSize = true,
             Font = new Font("Segoe UI", 9.5F),
             Text = "Use Ctrl, Alt, Shift, or Win together with a letter, digit, or F1-F12. Press Esc to cancel.",
-            MaximumSize = new Size(390, 0),
+            MaximumSize = new Size(380, 0),
             Margin = new Padding(0, 0, 0, 12),
         };
 
@@ -246,29 +244,15 @@ static class HotkeyDialog
             Margin = new Padding(0, 6, 0, 0),
         };
 
-        var cancel = new Button
-        {
-            Text = "Cancel",
-            AutoSize = true,
-            DialogResult = DialogResult.Cancel,
-            Anchor = AnchorStyles.Right,
-        };
-
-        var buttons = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.RightToLeft,
-            Margin = new Padding(0, 12, 0, 0),
-        };
-        buttons.Controls.Add(cancel);
+        var cancel = new Win11Button(light) { Text = "Cancel", DialogResult = DialogResult.Cancel };
 
         root.Controls.Add(title, 0, 0);
         root.Controls.Add(currentLabel, 0, 1);
         root.Controls.Add(hint, 0, 2);
         root.Controls.Add(status, 0, 3);
-        root.Controls.Add(buttons, 0, 4);
         form.Controls.Add(root);
+        form.Controls.Add(DialogFooter.Create(light, cancel));
+        root.BringToFront();
         form.CancelButton = cancel;
 
         string? result = null;
@@ -338,48 +322,35 @@ static class HotkeysWindow
             MaximizeBox = false,
             ShowIcon = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(440, 164),
-            BackColor = Theme.Back(light),
+            ClientSize = new Size(440, 178),
+            BackColor = Theme.Content(light),
             ForeColor = Theme.Fore(light),
             Font = new Font("Segoe UI", 9.5F),
-            TopMost = true,
         };
-        form.Shown += (_, _) => Win11.RoundCorners(form);
+        form.Shown += (_, _) => Win11.ApplyChrome(form, light);
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(20, 16, 20, 16),
+            Padding = new Padding(24, 18, 24, 0),
             ColumnCount = 3,
-            RowCount = 3,
+            RowCount = 2,
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 76));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         AddRow(layout, 0, "Cycle outputs", light, () => cycleOutputs, value => cycleOutputs = value);
         AddRow(layout, 1, "Cycle inputs", light, () => cycleInputs, value => cycleInputs = value);
 
-        var save = AccentButton("Save");
-        save.DialogResult = DialogResult.OK;
-        var cancel = FlatButton("Cancel", light);
-        cancel.DialogResult = DialogResult.Cancel;
-
-        var buttons = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.RightToLeft,
-            Margin = new Padding(0),
-        };
-        buttons.Controls.Add(save);
-        buttons.Controls.Add(cancel);
-        layout.Controls.Add(buttons, 0, 2);
-        layout.SetColumnSpan(buttons, 3);
+        var save = new Win11Button(light) { Text = "Save", Accent = true, DialogResult = DialogResult.OK };
+        var cancel = new Win11Button(light) { Text = "Cancel", DialogResult = DialogResult.Cancel };
 
         form.Controls.Add(layout);
+        form.Controls.Add(DialogFooter.Create(light, save, cancel));
+        layout.BringToFront();
         form.AcceptButton = save;
         form.CancelButton = cancel;
 
@@ -412,61 +383,19 @@ static class HotkeysWindow
             Margin = new Padding(0, 0, 8, 10),
         };
 
-        var pick = FlatButton(Show(get()), light);
-        pick.AutoSize = false;
-        pick.Dock = DockStyle.Fill;
-        pick.Margin = new Padding(0, 0, 8, 10);
+        var pick = new Win11Button(light) { Text = Show(get()), Dock = DockStyle.Fill, Margin = new Padding(0, 0, 8, 10) };
         pick.Click += (_, _) =>
         {
             string? picked = HotkeyDialog.Ask(get());
             if (picked is not null) { set(picked); pick.Text = Show(picked); }
         };
 
-        var clear = FlatButton("Clear", light);
-        clear.AutoSize = false;
-        clear.Dock = DockStyle.Fill;
-        clear.Margin = new Padding(0, 0, 0, 10);
+        var clear = new Win11Button(light) { Text = "Clear", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) };
         clear.Click += (_, _) => { set(""); pick.Text = Show(""); };
 
         layout.Controls.Add(label, 0, row);
         layout.Controls.Add(pick, 1, row);
         layout.Controls.Add(clear, 2, row);
-    }
-
-    // Win11-style quiet button: control-fill background, hairline border, no
-    // focus rectangle chrome.
-    static Button FlatButton(string text, bool light)
-    {
-        var button = new Button
-        {
-            Text = text,
-            Size = new Size(88, 32),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Theme.Card(light),
-            ForeColor = Theme.Fore(light),
-            Margin = new Padding(8, 8, 0, 0),
-        };
-        button.FlatAppearance.BorderColor = Theme.Line(light);
-        button.FlatAppearance.MouseOverBackColor = Theme.Hover(light);
-        return button;
-    }
-
-    // Win11-style primary action: accent fill, no border.
-    static Button AccentButton(string text)
-    {
-        var button = new Button
-        {
-            Text = text,
-            Size = new Size(88, 32),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Theme.Accent,
-            ForeColor = Color.White,
-            Margin = new Padding(8, 8, 0, 0),
-        };
-        button.FlatAppearance.BorderSize = 0;
-        button.FlatAppearance.MouseOverBackColor = Theme.AccentHover;
-        button.FlatAppearance.MouseDownBackColor = Theme.AccentHover;
-        return button;
     }
 
     static string Show(string hotkey) => string.IsNullOrWhiteSpace(hotkey) ? "(none)" : hotkey;

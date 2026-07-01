@@ -30,9 +30,14 @@ how each app resolves its audio device.
 - [ ] Unticking a device drops it from the ring on the next cycle; ticks survive a
       restart (saved immediately).
 - [ ] **Hotkeys…** edits both cycle hotkeys in one window; saved combos work right away,
-      Cancel discards. Buttons follow the theme (no clipped controls, accent Save).
+      Cancel discards. Win11 dialog look: rounded themed buttons, footer band with
+      accent Save, no clipped controls.
+- [ ] Hotkeys/About/Set-hotkey title bars follow the Windows dark/light theme, in both
+      themes.
+- [ ] The Hotkeys window is NOT always-on-top: another app window can cover it.
 - [ ] Picking **Hotkeys…** while the window is already open focuses it — no duplicate
       window appears.
+- [ ] **About** uses the same dialog style (content area + footer band, accent Close).
 - [ ] Assigning a hotkey already taken by another app shows the "in use" warning and
       the other hotkeys still work.
 

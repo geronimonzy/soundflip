@@ -16,12 +16,13 @@ static class AboutDialog
             MinimizeBox = false,
             ShowIcon = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(470, 300),
-            BackColor = Theme.Back(light),
+            ClientSize = new Size(470, 312),
+            BackColor = Theme.Content(light),
             ForeColor = Theme.Fore(light),
+            Font = new Font("Segoe UI", 9.5F),
         };
 
-        form.Shown += (_, _) => Win11.RoundCorners(form);
+        form.Shown += (_, _) => Win11.ApplyChrome(form, light);
 
         var iconImage = TrayArt.SpeakerBitmap(56);
         form.FormClosed += (_, _) => iconImage.Dispose();
@@ -29,12 +30,11 @@ static class AboutDialog
         var shell = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(18),
+            Padding = new Padding(24, 20, 24, 0),
             ColumnCount = 1,
-            RowCount = 2,
+            RowCount = 1,
         };
         shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        shell.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var header = new TableLayoutPanel
         {
@@ -104,28 +104,17 @@ static class AboutDialog
         header.Controls.Add(iconBox, 0, 0);
         header.Controls.Add(body, 1, 0);
 
-        var buttons = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            FlowDirection = FlowDirection.RightToLeft,
-            Margin = new Padding(0, 14, 0, 0),
-        };
-
-        var close = new Button
-        {
-            Text = "Close",
-            AutoSize = true,
-            DialogResult = DialogResult.OK,
-        };
-        buttons.Controls.Add(close);
-
-        buttons.Controls.Add(ActionButton("Support", AppMetadata.SupportUrl, owner));
-        buttons.Controls.Add(ActionButton("Homepage", AppMetadata.HomepageUrl, owner));
+        var close = new Win11Button(light) { Text = "Close", Accent = true, DialogResult = DialogResult.OK };
+        var footer = DialogFooter.Create(
+            light,
+            close,
+            ActionButton("Support", AppMetadata.SupportUrl, owner, light),
+            ActionButton("Homepage", AppMetadata.HomepageUrl, owner, light));
 
         shell.Controls.Add(header, 0, 0);
-        shell.Controls.Add(buttons, 0, 1);
         form.Controls.Add(shell);
+        form.Controls.Add(footer);
+        shell.BringToFront();
         form.AcceptButton = close;
         form.CancelButton = close;
 
@@ -142,12 +131,11 @@ static class AboutDialog
         Margin = new Padding(0, 0, 0, 4),
     };
 
-    static Button ActionButton(string label, string url, IWin32Window? owner)
+    static Button ActionButton(string label, string url, IWin32Window? owner, bool light)
     {
-        var button = new Button
+        var button = new Win11Button(light)
         {
             Text = label,
-            AutoSize = true,
             Enabled = !string.IsNullOrWhiteSpace(url),
         };
 

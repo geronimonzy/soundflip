@@ -33,9 +33,10 @@ static class Theme
     public static Color Error(bool light) => light ? Color.FromArgb(0xC4, 0x2B, 0x1C) : Color.FromArgb(0xF0, 0x70, 0x70);
     public static Color Accent => Color.FromArgb(0x2E, 0x9B, 0xF0);
     public static Color AccentHover => Color.FromArgb(0x27, 0x84, 0xCC);
-    // Win11 "control fill": buttons/inputs sit slightly lighter (dark) or brighter
-    // (light) than the window background.
-    public static Color Card(bool light) => light ? Color.White : Color.FromArgb(58, 58, 58);
+    // Win11 dialog surfaces: the content area sits on Content, the bottom action
+    // strip on the slightly darker Footer (WinUI ContentDialog pattern).
+    public static Color Content(bool light) => light ? Color.White : Color.FromArgb(41, 41, 41);
+    public static Color Footer(bool light) => light ? Color.FromArgb(243, 243, 243) : Color.FromArgb(32, 32, 32);
 }
 
 static class Gfx
@@ -55,6 +56,7 @@ static class Gfx
 
 static class Win11
 {
+    const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
     const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     const int DWMWCP_ROUND = 2;
 
@@ -74,6 +76,122 @@ static class Win11
         {
             // Ignore on older Windows releases.
         }
+    }
+
+    // Dialog chrome: rounded corners plus a title bar that follows the app theme
+    // (WinForms otherwise keeps a light title bar even when the content is dark).
+    public static void ApplyChrome(Form form, bool light)
+    {
+        if (!form.IsHandleCreated) return;
+
+        int dark = light ? 0 : 1;
+        try
+        {
+            DwmSetWindowAttribute(form.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
+        }
+        catch
+        {
+            // Ignore on older Windows releases.
+        }
+
+        RoundCorners(form);
+    }
+}
+
+// Custom-painted Win11-style button: smooth anti-aliased rounded corners with
+// control-fill (default) or accent (primary action) coloring. Plain WinForms —
+// no WinUI involved.
+sealed class Win11Button : Button
+{
+    readonly bool _light;
+    bool _hover, _down;
+
+    public bool Accent { get; init; }
+
+    public Win11Button(bool light)
+    {
+        _light = light;
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
+        Size = new Size(88, 32);
+        Margin = new Padding(8, 0, 0, 0);
+    }
+
+    protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e) { _hover = false; _down = false; Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnMouseDown(MouseEventArgs e) { _down = true; Invalidate(); base.OnMouseDown(e); }
+    protected override void OnMouseUp(MouseEventArgs e) { _down = false; Invalidate(); base.OnMouseUp(e); }
+    protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+    protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+    protected override void OnTextChanged(EventArgs e) { Invalidate(); base.OnTextChanged(e); }
+    protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.Clear(Parent?.BackColor ?? Theme.Content(_light));
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        var rect = new RectangleF(0.5F, 0.5F, Width - 1, Height - 1);
+        using var path = Gfx.Round(rect, 4F);
+        using (var fill = new SolidBrush(FillColor()))
+            g.FillPath(fill, path);
+
+        if (!Accent)
+        {
+            using var pen = new Pen(Focused ? Theme.Accent : Theme.Line(_light));
+            g.DrawPath(pen, path);
+        }
+
+        TextRenderer.DrawText(g, Text, Font, ClientRectangle, TextColor(),
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+    }
+
+    Color FillColor()
+    {
+        if (Accent)
+        {
+            if (!Enabled) return Theme.Disabled(_light);
+            return _down || _hover ? Theme.AccentHover : Theme.Accent;
+        }
+
+        if (_down) return _light ? Color.FromArgb(240, 240, 240) : Color.FromArgb(39, 39, 39);
+        if (_hover) return _light ? Color.FromArgb(246, 246, 246) : Color.FromArgb(52, 52, 52);
+        return _light ? Color.FromArgb(251, 251, 251) : Color.FromArgb(45, 45, 45);
+    }
+
+    Color TextColor() =>
+        !Enabled ? Theme.Disabled(_light) : Accent ? Color.White : Theme.Fore(_light);
+}
+
+// Bottom action strip of a Win11-style dialog: a slightly darker band with a
+// hairline on top and buttons flowing in from the right.
+static class DialogFooter
+{
+    public const int Height = 60;
+
+    public static Panel Create(bool light, params Button[] buttonsRightToLeft)
+    {
+        var footer = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = Height,
+            BackColor = Theme.Footer(light),
+        };
+        footer.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Theme.Line(light));
+            e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0);
+        };
+
+        var flow = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            Padding = new Padding(8, 14, 24, 0),
+        };
+        foreach (var button in buttonsRightToLeft) flow.Controls.Add(button);
+        footer.Controls.Add(flow);
+        return footer;
     }
 }
 
