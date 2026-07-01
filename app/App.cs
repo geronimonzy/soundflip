@@ -1,19 +1,34 @@
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
-// Code-only WinUI 3 Application (no App.xaml). It owns the tray app and lives for
-// the lifetime of the process; there is no main window.
-sealed class App : Application
+namespace AudioSwitcher;
+
+// WinUI 3 Application (App.xaml provides the XAML metadata + control resources). It
+// owns the tray app and lives for the lifetime of the process; there is no main
+// window. Startup failures are surfaced instead of silently killing the process.
+sealed partial class App : Application
 {
     TrayApp? _tray;
 
     public App()
     {
-        Resources.MergedDictionaries.Add(new XamlControlsResources());
+        InitializeComponent();
+        UnhandledException += (_, e) =>
+        {
+            StartupLog.Fail(e.Exception);
+            e.Handled = true;
+        };
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _tray = new TrayApp();
+        try
+        {
+            _tray = new TrayApp();
+        }
+        catch (Exception ex)
+        {
+            StartupLog.Fail(ex);
+            Exit();
+        }
     }
 }

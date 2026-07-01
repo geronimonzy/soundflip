@@ -12,12 +12,22 @@ internal static class Program
         if (command.Kind is not Command.Tray)
             return Cli.Run(command);
 
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => StartupLog.Fail(e.ExceptionObject as Exception);
+
         WinRT.ComWrappersSupport.InitializeComWrappers();
         Application.Start(p =>
         {
             var context = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
             System.Threading.SynchronizationContext.SetSynchronizationContext(context);
-            _ = new App();
+            try
+            {
+                _ = new AudioSwitcher.App();
+            }
+            catch (Exception ex)
+            {
+                StartupLog.Fail(ex);
+                throw;
+            }
         });
 
         return 0;

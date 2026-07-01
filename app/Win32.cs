@@ -6,10 +6,14 @@ static class Win32
 {
     public const int ATTACH_PARENT_PROCESS = -1;
     public const uint WM_HOTKEY = 0x0312;
+    public const uint MB_ICONERROR = 0x00000010;
     public static readonly IntPtr HWND_MESSAGE = new(-3);
 
     [DllImport("kernel32.dll")]
     public static extern bool AttachConsole(int dwProcessId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     public static extern IntPtr GetModuleHandleW(string? lpModuleName);

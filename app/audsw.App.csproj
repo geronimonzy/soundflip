@@ -9,7 +9,7 @@
     <AssemblyName>audsw</AssemblyName>
     <Product>audsw</Product>
     <Description>Minimal Windows audio output switcher.</Description>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWinUI>true</UseWinUI>
