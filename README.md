@@ -34,8 +34,8 @@ Needs the .NET 8 SDK on Windows. From this folder in PowerShell:
 ```
 
 This produces a single self-contained `dist\audsw.exe` (no .NET install needed
-to run it). `start-daemon.vbs` is copied alongside it for windowless unpackaged
-launches.
+to run it). The exe is a Windows GUI app: launching it never opens a console
+window, and CLI commands print into the terminal they were started from.
 
 ## Tests
 
@@ -52,16 +52,17 @@ switching, or packaged startup behavior — see `TESTING.md` for the manual pass
 
 ## Tray app (recommended)
 
-Run `audsw` (or double-click `start-daemon.vbs` for no window) to get a speaker
-icon in the notification area. Right-click it to:
+Run `audsw` (no window opens) to get a speaker icon in the notification area.
+Right-click it to:
 
 - **Cycle output / input** — advance the matching ring (also bound to hotkeys).
 - **Output / Input** — a live checklist of active devices: tick the ones you want
   in the cycle ring (the menu stays open for multi-select), ● marks the current
   default. Changes are saved immediately.
-- **Cycle output/input hotkey…** — capture a new hotkey for either cycle command.
-- **Start with Windows** — available in packaged Store/MSIX builds via the
-  Windows startup task model.
+- **Hotkeys…** — one window to view/change both cycle hotkeys at once.
+- **Start with Windows** — works in every build: packaged Store/MSIX builds use
+  the Windows startup task model, unpackaged builds use the per-user registry
+  Run key.
 - **About audsw** — version, settings path, and release metadata status.
 - **Exit**.
 
@@ -74,8 +75,8 @@ showing the new device(s), and the icon tooltip shows the current output.
 ### Hotkeys
 
 Two optional ring hotkeys — **cycle outputs** (default `Ctrl+Alt+O`) and **cycle
-inputs** — both set from the tray menu. Conflicting/unavailable combos are skipped
-with a one-off warning; the rest keep working.
+inputs** — both set from the tray **Hotkeys…** window. Conflicting/unavailable
+combos are skipped with a one-off warning; the rest keep working.
 
 ### Settings file
 
@@ -84,11 +85,12 @@ Live settings are stored as JSON at `%LocalAppData%\audsw\audsw.json`. An older
 (`device1`/`device2` become the output ring, `hotkey` becomes the cycle-output
 hotkey) and rewritten as JSON. The file is safe to hand-edit.
 
-## Run windowless at login
+## Run at login
 
-In packaged Store/MSIX builds, use **Start with Windows** in the tray menu.
-For unpackaged builds, `start-daemon.vbs` remains the simple windowless launcher
-you can wire into login manually.
+Use **Start with Windows** in the tray menu — it works in every build. Packaged
+Store/MSIX builds register a Windows startup task; unpackaged builds write a
+per-user registry Run entry (`HKCU\...\CurrentVersion\Run`). Either way the app
+starts silently in the tray with no window.
 
 ## Store packaging helpers
 

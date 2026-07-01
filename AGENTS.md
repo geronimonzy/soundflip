@@ -11,7 +11,7 @@
 - Canonical release build: `.\build.ps1` in PowerShell. It runs `dotnet publish .\audsw.csproj -c Release -o .\dist`.
 - Unit tests: `dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release`.
 - Practical verification path is tests plus publish on Windows, then exercise `audsw`, `audsw list`, `audsw cycle`, `audsw export-assets .\Store\Assets`, and the tray UI from the built exe.
-- `start-daemon.vbs` is copied by `build.ps1`; live settings are no longer copied beside the exe.
+- Live settings are not copied beside the exe.
 
 ## GitHub Automation
 - GitHub Actions live in `.github/workflows/`.
@@ -21,12 +21,12 @@
 ## Runtime Gotchas
 - No-arg launch is tray-first now; use `audsw help` if you want the usage text explicitly.
 - Live settings are stored per-user as JSON at `%LocalAppData%\audsw\audsw.json`, not beside the executable. An older `audsw.cfg` is migrated once on first launch.
-- `audsw` is still built as a console `Exe`, not `WinExe`. Tray launch hides its own console only when it owns that console; `start-daemon.vbs` remains the fully windowless unpackaged launcher.
-- The tray's **Start with Windows** flow is Store/MSIX-oriented and uses `Windows.ApplicationModel.StartupTask`. In unpackaged builds the menu item stays visible but reports that startup is unavailable.
+- `audsw` is built as a `WinExe`: no console window is ever created. CLI verbs attach to the parent terminal's console unless stdout is already redirected; a bare PowerShell invocation does not wait for the exe, so CI smoke checks use `Start-Process -Wait` with redirected output.
+- The tray's **Start with Windows** works in every build: `Windows.ApplicationModel.StartupTask` when packaged (Store/MSIX), a per-user `HKCU\...\CurrentVersion\Run` registry value when unpackaged.
 - Device resolution is case-insensitive substring matching against currently active playback/recording devices.
 - Switching sets both the default role and the default communications role, for outputs and inputs alike.
 - `cycle [outputs|inputs]` advances the matching ring to the next entry after the current default; a default outside the ring restarts at the first entry.
-- There is no settings window: the output/input cycle rings are ticked directly in the tray **Output**/**Input** checklists (saved immediately), and the two cycle hotkeys are set from tray menu items. Pairs and per-device jump hotkeys were removed in 1.1.2; old JSON files containing them still load (the retired properties are ignored).
+- There is no settings window: the output/input cycle rings are ticked directly in the tray **Output**/**Input** checklists (saved immediately), and both cycle hotkeys are edited together via the tray **Hotkeys…** window. Pairs and per-device jump hotkeys were removed in 1.1.2; old JSON files containing them still load (the retired properties are ignored).
 
 ## Commands And Config
 - Supported commands: `audsw`, `audsw list [outputs|inputs]`, `audsw set [output|input] <name>`, `audsw cycle [outputs|inputs]`, `audsw daemon`, `audsw export-assets <dir>`, `audsw help`.

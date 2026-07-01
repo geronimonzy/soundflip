@@ -14,7 +14,7 @@ Behavior is split across focused top-level files (flat namespace, no subfolders 
 - `TrayContext.cs` — tray icon, context menu (including the output/input cycle-ring checklists), toasts
 - `UI.cs` — theme, Win11 styling, menu renderer, and toast rendering (WinForms)
 - `Hotkeys.cs` — global hotkey registration/parsing (Win32 `RegisterHotKey` + message loop)
-- `AutoStart.cs` — packaged (MSIX) "Start with Windows" via `Windows.ApplicationModel.StartupTask`
+- `AutoStart.cs` — "Start with Windows": `Windows.ApplicationModel.StartupTask` when packaged (MSIX), HKCU Run key when unpackaged
 - `AboutDialog.cs` — version/release metadata dialog
 - `StoreAssets.cs` — generates default Microsoft Store logo assets (`export-assets` command)
 - `CommandLine.cs`/`Program.cs` are the only pieces exercised as a CLI; everything else assumes the WinForms tray runtime
@@ -36,21 +36,21 @@ dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release
 dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release --filter "FullyQualifiedName~SettingsStoreTests"
 ```
 
-`build.ps1` runs `dotnet publish .\audsw.csproj -c Release -o .\dist` and copies `start-daemon.vbs` alongside the exe. Live user settings are **not** copied beside the exe — they live in `%LocalAppData%`.
+`build.ps1` runs `dotnet publish .\audsw.csproj -c Release -o .\dist`. Live user settings are **not** copied beside the exe — they live in `%LocalAppData%`.
 
 Practical verification path: run the unit tests, then publish and manually exercise `audsw`, `audsw list`, `audsw cycle`, `audsw export-assets .\Store\Assets`, and the tray UI from the built exe. See `TESTING.md` for the full manual checklist, including the call/voice-app follow-through matrix (Teams/Discord/Zoom/Steam/WhatsApp) that can only be checked by hand.
 
 ## Runtime behavior notes
 
 - No-arg launch (`audsw`) goes straight to the tray; use `audsw help` for usage text.
-- `audsw` is built as a console `Exe`, not `WinExe`. The tray run hides its own console only when it's the sole owner of that console handle (double-click / VBS launch); `start-daemon.vbs` is the fully windowless unpackaged launcher.
+- `audsw` is built as a `WinExe`: no console window is ever created (no flash on double-click or at login). CLI verbs attach to the parent terminal's console (`AttachConsole`) unless stdout is already redirected — consequence: an interactive shell prompt returns before CLI output appears, and CI must invoke the exe via `Start-Process -Wait` with redirected output rather than a bare call.
 - Settings live at `%LocalAppData%\audsw\audsw.json`. An older flat `audsw.cfg` (`device1`/`device2`/`hotkey`) is auto-migrated on first launch into the output ring + cycle-output hotkey, then rewritten as JSON.
 - Device resolution is case-insensitive substring matching against currently **active** playback/recording devices only.
 - Switching a device sets both the default role and the default *communications* role together, for both outputs and inputs — this is what makes call apps (Teams/Discord/Zoom/etc.) follow the switch, and is the app's main differentiator (see `README.md` and `COMPETITIVE_REVIEW.md`).
 - `cycle [outputs|inputs]` advances the matching ring to the next resolvable entry after the current default; a default outside the ring restarts at the first entry.
-- There is no settings window: cycle rings are ticked in the tray **Output**/**Input** device checklists (saved to JSON immediately; the dropdown stays open for multi-select, ● marks the current default), and the two cycle hotkeys are set via tray menu items. Pairs and per-device jump hotkeys were removed in 1.1.2; retired JSON properties (`pairs`, `cyclePairs`, per-entry `hotkey`) are silently ignored on load.
+- There is no settings window: cycle rings are ticked in the tray **Output**/**Input** device checklists (saved to JSON immediately; the dropdown stays open for multi-select, ● marks the current default), and both cycle hotkeys are edited together in the tray **Hotkeys…** window (`HotkeysWindow` in `Hotkeys.cs`). Pairs and per-device jump hotkeys were removed in 1.1.2; retired JSON properties (`pairs`, `cyclePairs`, per-entry `hotkey`) are silently ignored on load.
 - Supported hotkey grammar: modifier(s) plus `A-Z`, `0-9`, or `F1`-`F12`. Conflicting/unavailable hotkeys are skipped with a one-off warning; other configured hotkeys keep working.
-- "Start with Windows" only works in packaged Store/MSIX builds (`Windows.ApplicationModel.StartupTask`); in unpackaged builds the menu item stays visible but reports startup as unavailable.
+- "Start with Windows" works in every build: packaged Store/MSIX builds use `Windows.ApplicationModel.StartupTask`, unpackaged builds fall back to a per-user `HKCU\...\CurrentVersion\Run` registry value pointing at the running exe.
 
 ## Dependency quirks
 

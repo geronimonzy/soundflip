@@ -308,3 +308,113 @@ static class HotkeyDialog
         (GetAsyncKeyState(0x5B) & 0x8000) != 0 ||
         (GetAsyncKeyState(0x5C) & 0x8000) != 0;
 }
+
+// One small window to edit both cycle hotkeys at once. Works on local copies so
+// Cancel discards; on Save the new values are written into the settings object.
+// Returns true when the settings were changed.
+static class HotkeysWindow
+{
+    public static bool Edit(AppSettings settings)
+    {
+        bool light = Theme.IsLight;
+        string cycleOutputs = settings.CycleOutputs;
+        string cycleInputs = settings.CycleInputs;
+
+        using var form = new Form
+        {
+            Text = "Hotkeys",
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            StartPosition = FormStartPosition.CenterScreen,
+            MinimizeBox = false,
+            MaximizeBox = false,
+            ShowIcon = false,
+            ShowInTaskbar = false,
+            ClientSize = new Size(400, 150),
+            BackColor = Theme.Back(light),
+            ForeColor = Theme.Fore(light),
+            Font = new Font("Segoe UI", 9.5F),
+            TopMost = true,
+        };
+        form.Shown += (_, _) => Win11.RoundCorners(form);
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(16),
+            ColumnCount = 3,
+            RowCount = 3,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        AddRow(layout, 0, "Cycle outputs", light, () => cycleOutputs, value => cycleOutputs = value);
+        AddRow(layout, 1, "Cycle inputs", light, () => cycleInputs, value => cycleInputs = value);
+
+        var save = new Button { Text = "Save", DialogResult = DialogResult.OK, AutoSize = true, Anchor = AnchorStyles.Right };
+        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, AutoSize = true, Anchor = AnchorStyles.Right };
+        var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, AutoSize = true };
+        buttons.Controls.Add(save);
+        buttons.Controls.Add(cancel);
+        layout.Controls.Add(buttons, 1, 2);
+        layout.SetColumnSpan(buttons, 2);
+
+        form.Controls.Add(layout);
+        form.AcceptButton = save;
+        form.CancelButton = cancel;
+
+        if (form.ShowDialog() != DialogResult.OK) return false;
+        if (cycleOutputs == settings.CycleOutputs && cycleInputs == settings.CycleInputs) return false;
+
+        settings.CycleOutputs = cycleOutputs;
+        settings.CycleInputs = cycleInputs;
+        return true;
+    }
+
+    static void AddRow(TableLayoutPanel layout, int row, string caption, bool light, Func<string> get, Action<string> set)
+    {
+        var label = new Label
+        {
+            Text = caption,
+            AutoSize = true,
+            ForeColor = Theme.Fore(light),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(0, 6, 0, 0),
+        };
+
+        var pick = new Button
+        {
+            Text = Show(get()),
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Back(light),
+            ForeColor = Theme.Fore(light),
+        };
+        pick.FlatAppearance.BorderColor = Theme.Line(light);
+        pick.FlatAppearance.MouseOverBackColor = Theme.Hover(light);
+        pick.Click += (_, _) =>
+        {
+            string? picked = HotkeyDialog.Ask(get());
+            if (picked is not null) { set(picked); pick.Text = Show(picked); }
+        };
+
+        var clear = new Button
+        {
+            Text = "Clear",
+            AutoSize = true,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Back(light),
+            ForeColor = Theme.Fore(light),
+        };
+        clear.FlatAppearance.BorderColor = Theme.Line(light);
+        clear.FlatAppearance.MouseOverBackColor = Theme.Hover(light);
+        clear.Click += (_, _) => { set(""); pick.Text = Show(""); };
+
+        layout.Controls.Add(label, 0, row);
+        layout.Controls.Add(pick, 1, row);
+        layout.Controls.Add(clear, 2, row);
+    }
+
+    static string Show(string hotkey) => string.IsNullOrWhiteSpace(hotkey) ? "(none)" : hotkey;
+}

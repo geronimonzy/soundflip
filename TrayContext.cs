@@ -85,10 +85,7 @@ sealed class TrayContext : ApplicationContext
         menu.Items.Add(DeviceMenu("Input", AudioKind.Input));
         menu.Items.Add(new ToolStripSeparator());
 
-        menu.Items.Add(new ToolStripMenuItem("Cycle output hotkey...", null,
-            (_, _) => EditCycleHotkey(() => _settings.CycleOutputs, value => _settings.CycleOutputs = value)));
-        menu.Items.Add(new ToolStripMenuItem("Cycle input hotkey...", null,
-            (_, _) => EditCycleHotkey(() => _settings.CycleInputs, value => _settings.CycleInputs = value)));
+        menu.Items.Add(new ToolStripMenuItem("Hotkeys...", null, (_, _) => EditHotkeys()));
         menu.Items.Add(new ToolStripSeparator());
 
         var autostart = new ToolStripMenuItem("Start with Windows", null, async (_, _) => await ToggleAutoStartAsync())
@@ -166,12 +163,10 @@ sealed class TrayContext : ApplicationContext
         !string.IsNullOrWhiteSpace(entry.Match)
         && deviceName.Contains(entry.Match, StringComparison.OrdinalIgnoreCase);
 
-    void EditCycleHotkey(Func<string> get, Action<string> set)
+    void EditHotkeys()
     {
-        string? picked = HotkeyDialog.Ask(get());
-        if (picked is null) return;
+        if (!HotkeysWindow.Edit(_settings)) return;
 
-        set(picked);
         SettingsStore.Save(_settings);
         RebindHotkeys();
         BuildMenu();

@@ -34,14 +34,22 @@ jobs:
         shell: pwsh
         run: .\build.ps1
 
+      # audsw is a WinExe, so PowerShell does not wait for it or surface its exit
+      # code on a bare invocation; Start-Process -Wait with redirected output does.
       - name: Smoke check published app
         shell: pwsh
         run: |
-          & .\dist\audsw.exe help
+          $helpLog = Join-Path $env:RUNNER_TEMP 'audsw-help.txt'
+          $p = Start-Process -FilePath .\dist\audsw.exe -ArgumentList 'help' `
+            -NoNewWindow -Wait -PassThru -RedirectStandardOutput $helpLog
+          Get-Content $helpLog
+          if ($p.ExitCode -ne 0) { throw "audsw help exited with code $($p.ExitCode)" }
 
           $outDir = Join-Path $env:RUNNER_TEMP 'audsw-release-assets'
           if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
-          & .\dist\audsw.exe export-assets $outDir
+          $p = Start-Process -FilePath .\dist\audsw.exe -ArgumentList "export-assets `"$outDir`"" `
+            -NoNewWindow -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "audsw export-assets exited with code $($p.ExitCode)" }
 
       - name: Package release bundle
         id: package

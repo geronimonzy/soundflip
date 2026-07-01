@@ -21,6 +21,10 @@ sealed record AutoStartStatus(bool Enabled, bool CanToggle, string Detail)
     public static AutoStartStatus Error(string detail) => new(false, false, detail);
 }
 
+// Packaged (Store/MSIX) builds go through the Windows StartupTask model so the
+// user keeps control in Settings > Apps > Startup. Unpackaged builds fall back to
+// the classic HKCU Run key, so the toggle works regardless of how audsw was
+// installed. The exe is a WinExe, so a login launch opens no window either way.
 static class AutoStart
 {
     public const string TaskId = "audswStartup";
@@ -28,7 +32,7 @@ static class AutoStart
     public static async Task<AutoStartStatus> GetStatusAsync()
     {
         if (!PackageIdentity.HasIdentity)
-            return AutoStartStatus.Unsupported("Start with Windows is available only in packaged Store/MSIX builds.");
+            return RunKey.GetStatus();
 
         try
         {
@@ -44,7 +48,7 @@ static class AutoStart
     public static async Task<AutoStartStatus> SetEnabledAsync(bool enabled)
     {
         if (!PackageIdentity.HasIdentity)
-            return AutoStartStatus.Unsupported("Start with Windows is available only in packaged Store/MSIX builds.");
+            return RunKey.SetEnabled(enabled);
 
         try
         {
@@ -77,6 +81,53 @@ static class AutoStart
         StartupTaskState.DisabledByPolicy => AutoStartStatus.DisabledByPolicy(),
         _ => AutoStartStatus.Error("Startup state could not be determined."),
     };
+}
+
+// Unpackaged autostart: a value under HKCU\...\Run pointing at this exe.
+static class RunKey
+{
+    const string KeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    const string ValueName = "audsw";
+
+    public static AutoStartStatus GetStatus()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(KeyPath);
+            return key?.GetValue(ValueName) is string
+                ? AutoStartStatus.EnabledStatus()
+                : AutoStartStatus.Disabled("Enable startup from the tray menu.");
+        }
+        catch (Exception ex)
+        {
+            return AutoStartStatus.Error("Startup registry entry is unavailable: " + ex.Message);
+        }
+    }
+
+    public static AutoStartStatus SetEnabled(bool enabled)
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(KeyPath);
+            if (enabled)
+            {
+                string? exe = Environment.ProcessPath;
+                if (string.IsNullOrWhiteSpace(exe))
+                    return AutoStartStatus.Error("Could not determine the path of the running executable.");
+                key.SetValue(ValueName, $"\"{exe}\"");
+            }
+            else
+            {
+                key.DeleteValue(ValueName, throwOnMissingValue: false);
+            }
+
+            return GetStatus();
+        }
+        catch (Exception ex)
+        {
+            return AutoStartStatus.Error("Startup registry entry is unavailable: " + ex.Message);
+        }
+    }
 }
 
 static class PackageIdentity

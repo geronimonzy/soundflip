@@ -10,6 +10,7 @@ internal static class Program
     static int Run(string[] args)
     {
         var command = CommandLine.Parse(args, Environment.CurrentDirectory);
+        if (command.Kind != Command.Tray) AttachParentConsole();
 
         try
         {
@@ -111,7 +112,6 @@ internal static class Program
     static int RunTrayApp()
     {
         var settings = SettingsStore.Load();
-        HideOwnConsoleWindow();
 
         Exception? failure = null;
         var thread = new Thread(() =>
@@ -140,16 +140,14 @@ internal static class Program
         return 0;
     }
 
-    static void HideOwnConsoleWindow()
+    // As a WinExe we get no console of our own. For CLI verbs, borrow the parent
+    // terminal's console so output is visible — but only when stdout isn't already
+    // redirected to a pipe/file (which must keep working as-is). Must run before
+    // the first Console use so .NET picks up the attached handles.
+    static void AttachParentConsole()
     {
-        // Hide the console only when we own it alone (double-click / VBS launch);
-        // leave an interactive terminal we were started from untouched.
-        uint[] buffer = new uint[2];
-        uint count = NativeMethods.GetConsoleProcessList(buffer, (uint)buffer.Length);
-        if (count <= 1)
-        {
-            IntPtr hwnd = NativeMethods.GetConsoleWindow();
-            if (hwnd != IntPtr.Zero) NativeMethods.ShowWindow(hwnd, NativeMethods.SW_HIDE);
-        }
+        IntPtr stdout = NativeMethods.GetStdHandle(NativeMethods.STD_OUTPUT_HANDLE);
+        if (stdout == IntPtr.Zero || stdout == NativeMethods.INVALID_HANDLE_VALUE)
+            NativeMethods.AttachConsole(NativeMethods.ATTACH_PARENT_PROCESS);
     }
 }

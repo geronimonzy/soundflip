@@ -29,7 +29,8 @@ how each app resolves its audio device.
 - [ ] Tick 2 inputs in **Input ▸**; **Cycle input** cycles them.
 - [ ] Unticking a device drops it from the ring on the next cycle; ticks survive a
       restart (saved immediately).
-- [ ] **Cycle output/input hotkey…** captures a new combo and it works right away.
+- [ ] **Hotkeys…** edits both cycle hotkeys in one window; saved combos work right away,
+      Cancel discards.
 - [ ] Assigning a hotkey already taken by another app shows the "in use" warning and
       the other hotkeys still work.
 
@@ -57,4 +58,7 @@ can set expectations in the Store listing.
 - [ ] An existing `%LocalAppData%\audsw\audsw.cfg` from an older build is imported
       on first launch (device1/device2 → output ring, hotkey → cycle-output hotkey)
       and an `audsw.json` is written.
-- [ ] **Start with Windows** toggles in packaged Store/MSIX builds.
+- [ ] **Start with Windows** toggles in packaged Store/MSIX builds (StartupTask) AND
+      in the unpackaged exe (HKCU Run key appears/disappears; app starts on sign-in).
+- [ ] Double-clicking `audsw.exe` opens no console window (not even a flash);
+      `audsw list` from a terminal still prints (note: prompt may return first).
