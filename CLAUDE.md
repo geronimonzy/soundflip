@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo shape
 
-`audsw` is a single small Windows tray app plus one test project — no solution file, no monorepo. There is also an `AGENTS.md` in this repo with agent-facing notes; keep both in sync if you change build/behavior conventions.
+SoundFlip (previously named audsw; exe/CLI is `soundflip`) is a single small Windows tray app plus one test project — no solution file, no monorepo. There is also an `AGENTS.md` in this repo with agent-facing notes; keep both in sync if you change build/behavior conventions.
 
 Behavior is split across focused top-level files (flat namespace, no subfolders for source):
 - `Program.cs` — CLI entry point / bootstrap, dispatches to command handlers
@@ -19,7 +19,7 @@ Behavior is split across focused top-level files (flat namespace, no subfolders 
 - `StoreAssets.cs` — generates default Microsoft Store logo assets (`export-assets` command)
 - `CommandLine.cs`/`Program.cs` are the only pieces exercised as a CLI; everything else assumes the WinForms tray runtime
 
-`audsw.Tests/` covers deterministic logic only (CLI parsing, settings JSON round-trip + legacy migration, ring-advance math, hotkey grammar, Store asset export) — it is **not** an end-to-end UI/audio test suite.
+`soundflip.Tests/` covers deterministic logic only (CLI parsing, settings JSON round-trip + legacy migration, ring-advance math, hotkey grammar, Store asset export) — it is **not** an end-to-end UI/audio test suite.
 
 ## Build and test commands
 
@@ -30,21 +30,21 @@ This targets `net8.0-windows10.0.22621.0` with `UseWindowsForms=true`. Meaningfu
 .\build.ps1
 
 # Unit tests (all)
-dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release
+dotnet test .\soundflip.Tests\soundflip.Tests.csproj -c Release
 
 # Single test (dotnet test filter, e.g. by fully-qualified name or method name)
-dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release --filter "FullyQualifiedName~SettingsStoreTests"
+dotnet test .\soundflip.Tests\soundflip.Tests.csproj -c Release --filter "FullyQualifiedName~SettingsStoreTests"
 ```
 
-`build.ps1` runs `dotnet publish .\audsw.csproj -c Release -o .\dist`. Live user settings are **not** copied beside the exe — they live in `%LocalAppData%`.
+`build.ps1` runs `dotnet publish .\soundflip.csproj -c Release -o .\dist`. Live user settings are **not** copied beside the exe — they live in `%LocalAppData%`.
 
-Practical verification path: run the unit tests, then publish and manually exercise `audsw`, `audsw list`, `audsw cycle`, `audsw export-assets .\Store\Assets`, and the tray UI from the built exe. See `TESTING.md` for the full manual checklist, including the call/voice-app follow-through matrix (Teams/Discord/Zoom/Steam/WhatsApp) that can only be checked by hand.
+Practical verification path: run the unit tests, then publish and manually exercise `soundflip`, `soundflip list`, `soundflip cycle`, `soundflip export-assets .\Store\Assets`, and the tray UI from the built exe. See `TESTING.md` for the full manual checklist, including the call/voice-app follow-through matrix (Teams/Discord/Zoom/Steam/WhatsApp) that can only be checked by hand.
 
 ## Runtime behavior notes
 
-- No-arg launch (`audsw`) goes straight to the tray; use `audsw help` for usage text.
-- `audsw` is built as a `WinExe`: no console window is ever created (no flash on double-click or at login). CLI verbs attach to the parent terminal's console (`AttachConsole`) unless stdout is already redirected — consequence: an interactive shell prompt returns before CLI output appears, and CI must invoke the exe via `Start-Process -Wait` with redirected output rather than a bare call.
-- Settings live at `%LocalAppData%\audsw\audsw.json`. An older flat `audsw.cfg` (`device1`/`device2`/`hotkey`) is auto-migrated on first launch into the output ring + cycle-output hotkey, then rewritten as JSON.
+- No-arg launch (`soundflip`) goes straight to the tray; use `soundflip help` for usage text.
+- `soundflip` is built as a `WinExe`: no console window is ever created (no flash on double-click or at login). CLI verbs attach to the parent terminal's console (`AttachConsole`) unless stdout is already redirected — consequence: an interactive shell prompt returns before CLI output appears, and CI must invoke the exe via `Start-Process -Wait` with redirected output rather than a bare call.
+- Settings live at `%LocalAppData%\SoundFlip\soundflip.json`. Pre-rename installs are migrated on first launch: `%LocalAppData%\audsw\audsw.json` if present, else the original flat `audsw.cfg` (`device1`/`device2`/`hotkey` → output ring + cycle-output hotkey). A stale `audsw` HKCU Run value is likewise migrated to `SoundFlip`.
 - Device resolution is case-insensitive substring matching against currently **active** playback/recording devices only.
 - Switching a device sets both the default role and the default *communications* role together, for both outputs and inputs — this is what makes call apps (Teams/Discord/Zoom/etc.) follow the switch, and is the app's main differentiator (see `README.md` and `COMPETITIVE_REVIEW.md`).
 - `cycle [outputs|inputs]` advances the matching ring to the next resolvable entry after the current default; a default outside the ring restarts at the first entry.
@@ -55,7 +55,7 @@ Practical verification path: run the unit tests, then publish and manually exerc
 ## Dependency quirks
 
 - `AudioSwitcher.AudioApi` / `AudioSwitcher.AudioApi.CoreAudio` are pinned to `4.0.0-alpha5` — the only public way to *set* (not just read) the Windows default audio device, via the undocumented `IPolicyConfig` COM interface.
-- `NU1701` is intentionally suppressed in `audsw.csproj`: those packages target .NET Framework but work fine on `net8.0-windows`.
+- `NU1701` is intentionally suppressed in `soundflip.csproj`: those packages target .NET Framework but work fine on `net8.0-windows`.
 - WinRT APIs for packaged startup-task integration require the version-specific `net8.0-windows10.0.22621.0` TFM, not the `Microsoft.Windows.SDK.Contracts` package.
 - `Store\Package.appxmanifest.template` is a packaging template, not a finished manifest — it still needs real publisher metadata before Store submission.
 

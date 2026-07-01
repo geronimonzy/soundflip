@@ -57,16 +57,16 @@ internal static class CommandLine
         (token ?? string.Empty).ToLowerInvariant().StartsWith("input") ? CycleScope.Inputs : CycleScope.Outputs;
 
     public static string HelpText(string settingsPath) => $"""
-        audsw -- minimal audio device switcher
+        SoundFlip -- minimal audio device switcher
 
-          audsw                        launch the tray app
-          audsw list [outputs|inputs]  list active devices (* = current default)
-          audsw set [output|input] <name>
-                                       set the default device (substring match)
-          audsw cycle [outputs|inputs] advance the chosen ring to its next device
-          audsw daemon                 alias for launching the tray app
-          audsw export-assets <dir>    generate default Microsoft Store logo assets
-          audsw help                   show this help text
+          soundflip                        launch the tray app
+          soundflip list [outputs|inputs]  list active devices (* = current default)
+          soundflip set [output|input] <name>
+                                           set the default device (substring match)
+          soundflip cycle [outputs|inputs] advance the chosen ring to its next device
+          soundflip daemon                 alias for launching the tray app
+          soundflip export-assets <dir>    generate default Microsoft Store logo assets
+          soundflip help                   show this help text
 
         Settings file:
           {settingsPath}

@@ -1,4 +1,4 @@
-namespace audsw.Tests;
+namespace SoundFlip.Tests;
 
 public sealed class StoreAssetExporterTests
 {

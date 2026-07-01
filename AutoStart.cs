@@ -9,7 +9,7 @@ sealed record AutoStartStatus(bool Enabled, bool CanToggle, string Detail)
     public static AutoStartStatus Disabled(string detail = "Enable startup from the tray menu or Windows Startup Apps.") =>
         new(false, true, detail);
 
-    public static AutoStartStatus EnabledStatus(string detail = "audsw will start when you sign in.") =>
+    public static AutoStartStatus EnabledStatus(string detail = "SoundFlip will start when you sign in.") =>
         new(true, true, detail);
 
     public static AutoStartStatus DisabledByUser(string detail = "Startup was disabled by the user. Re-enable it from Windows Startup Apps.") =>
@@ -23,11 +23,11 @@ sealed record AutoStartStatus(bool Enabled, bool CanToggle, string Detail)
 
 // Packaged (Store/MSIX) builds go through the Windows StartupTask model so the
 // user keeps control in Settings > Apps > Startup. Unpackaged builds fall back to
-// the classic HKCU Run key, so the toggle works regardless of how audsw was
+// the classic HKCU Run key, so the toggle works regardless of how the app was
 // installed. The exe is a WinExe, so a login launch opens no window either way.
 static class AutoStart
 {
-    public const string TaskId = "audswStartup";
+    public const string TaskId = "SoundFlipStartup";
 
     public static async Task<AutoStartStatus> GetStatusAsync()
     {
@@ -87,14 +87,16 @@ static class AutoStart
 static class RunKey
 {
     const string KeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    const string ValueName = "audsw";
+    const string ValueName = "SoundFlip";
+    const string LegacyValueName = "audsw";
 
     public static AutoStartStatus GetStatus()
     {
         try
         {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(KeyPath);
-            return key?.GetValue(ValueName) is string
+            using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(KeyPath);
+            MigrateLegacyValue(key);
+            return key.GetValue(ValueName) is string
                 ? AutoStartStatus.EnabledStatus()
                 : AutoStartStatus.Disabled("Enable startup from the tray menu.");
         }
@@ -102,6 +104,18 @@ static class RunKey
         {
             return AutoStartStatus.Error("Startup registry entry is unavailable: " + ex.Message);
         }
+    }
+
+    // Pre-rename installs wrote an "audsw" value that points at an exe which no
+    // longer exists after updating. Carry the enabled intent over to the new
+    // value name (with the current exe path) and drop the stale entry.
+    static void MigrateLegacyValue(Microsoft.Win32.RegistryKey key)
+    {
+        if (key.GetValue(LegacyValueName) is not string) return;
+
+        if (key.GetValue(ValueName) is not string && Environment.ProcessPath is string exe)
+            key.SetValue(ValueName, $"\"{exe}\"");
+        key.DeleteValue(LegacyValueName, throwOnMissingValue: false);
     }
 
     public static AutoStartStatus SetEnabled(bool enabled)

@@ -322,25 +322,27 @@ static class HotkeysWindow
             MaximizeBox = false,
             ShowIcon = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(440, 178),
+            ClientSize = new Size(460, 184),
             BackColor = Theme.Content(light),
             ForeColor = Theme.Fore(light),
             Font = new Font("Segoe UI", 9.5F),
         };
         form.Shown += (_, _) => Win11.ApplyChrome(form, light);
 
+        // Vertically symmetric: 24px above the first row, 12px between rows, and
+        // 24px below the second row before the footer band.
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(24, 18, 24, 0),
+            Padding = new Padding(24, 24, 24, 24),
             ColumnCount = 3,
             RowCount = 2,
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 76));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 
         AddRow(layout, 0, "Cycle outputs", light, () => cycleOutputs, value => cycleOutputs = value);
         AddRow(layout, 1, "Cycle inputs", light, () => cycleInputs, value => cycleInputs = value);
@@ -373,6 +375,10 @@ static class HotkeysWindow
 
     static void AddRow(TableLayoutPanel layout, int row, string caption, bool light, Func<string> get, Action<string> set)
     {
+        // The first row's bottom margin is the 12px gap between rows; the last row
+        // sits flush so the layout's symmetric padding does the spacing.
+        int gap = row == 0 ? 12 : 0;
+
         var label = new Label
         {
             Text = caption,
@@ -380,17 +386,17 @@ static class HotkeysWindow
             Anchor = AnchorStyles.Left,
             ForeColor = Theme.Fore(light),
             TextAlign = ContentAlignment.MiddleLeft,
-            Margin = new Padding(0, 0, 8, 10),
+            Margin = new Padding(0, 0, 12, gap),
         };
 
-        var pick = new Win11Button(light) { Text = Show(get()), Dock = DockStyle.Fill, Margin = new Padding(0, 0, 8, 10) };
+        var pick = new Win11Button(light) { Text = Show(get()), Dock = DockStyle.Fill, Margin = new Padding(0, 0, 12, gap) };
         pick.Click += (_, _) =>
         {
             string? picked = HotkeyDialog.Ask(get());
             if (picked is not null) { set(picked); pick.Text = Show(picked); }
         };
 
-        var clear = new Win11Button(light) { Text = "Clear", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) };
+        var clear = new Win11Button(light) { Text = "Clear", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, gap) };
         clear.Click += (_, _) => { set(""); pick.Text = Show(""); };
 
         layout.Controls.Add(label, 0, row);

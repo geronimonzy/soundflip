@@ -56,7 +56,7 @@ internal static class Program
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            Console.Error.WriteLine("usage: audsw set [output|input] <name>");
+            Console.Error.WriteLine("usage: soundflip set [output|input] <name>");
             return 2;
         }
 

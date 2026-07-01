@@ -183,9 +183,9 @@ sealed class TrayContext : ApplicationContext
         BuildMenu();
 
         if (enable && status.Enabled)
-            Notify("Start with Windows enabled", "audsw will start when you sign in.", ToolTipIcon.Info);
+            Notify("Start with Windows enabled", $"{AppMetadata.ProductName} will start when you sign in.", ToolTipIcon.Info);
         else if (!enable && !status.Enabled && status.CanToggle)
-            Notify("Start with Windows disabled", "audsw will no longer start automatically.", ToolTipIcon.Info);
+            Notify("Start with Windows disabled", $"{AppMetadata.ProductName} will no longer start automatically.", ToolTipIcon.Info);
         else
             Notify("Autostart unavailable", status.Detail, ToolTipIcon.Warning);
     }

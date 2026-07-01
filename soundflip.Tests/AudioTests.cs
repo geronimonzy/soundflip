@@ -1,4 +1,4 @@
-namespace audsw.Tests;
+namespace SoundFlip.Tests;
 
 // Pure ring-advance math. The device-touching paths need real Windows audio COM
 // and are covered by the manual checklist in TESTING.md, not here.

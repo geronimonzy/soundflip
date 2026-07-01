@@ -1,11 +1,11 @@
-# Builds a single self-contained audsw.exe into .\dist
+# Builds a single self-contained soundflip.exe into .\dist
 # Run from Windows PowerShell in this folder:  .\build.ps1
 $ErrorActionPreference = "Stop"
-dotnet publish .\audsw.csproj -c Release -o .\dist
+dotnet publish .\soundflip.csproj -c Release -o .\dist
 if ($LASTEXITCODE -ne 0) { Write-Error "build failed (see errors above)"; exit 1 }
 Write-Host ""
 Write-Host "Done. Files are in .\dist :"
-Write-Host "  audsw.exe        tray-first app and CLI (windowless; no console flash)"
+Write-Host "  soundflip.exe        tray-first app and CLI (windowless; no console flash)"
 Write-Host ""
-Write-Host "Settings are stored per-user at %LocalAppData%\audsw\audsw.json"
-Write-Host "Run '.\dist\audsw.exe export-assets .\Store\Assets' to generate default Store logos"
+Write-Host "Settings are stored per-user at %LocalAppData%\SoundFlip\soundflip.json"
+Write-Host "Run '.\dist\soundflip.exe export-assets .\Store\Assets' to generate default Store logos"

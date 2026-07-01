@@ -1,4 +1,4 @@
-namespace audsw.Tests;
+namespace SoundFlip.Tests;
 
 public sealed class SettingsStoreTests
 {
@@ -66,7 +66,7 @@ public sealed class SettingsStoreTests
     public void SaveAndLoad_RoundTripThroughProvidedPath()
     {
         using var temp = new TempDirectory();
-        string path = System.IO.Path.Combine(temp.Path, "nested", "audsw.json");
+        string path = System.IO.Path.Combine(temp.Path, "nested", "soundflip.json");
         var expected = new AppSettings
         {
             Outputs = { new DeviceEntry { Match = "USB DAC" } },
@@ -112,18 +112,57 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
-    public void Load_NoJsonButLegacyPresent_MigratesAndWritesJson()
+    public void Load_NoJsonButLegacyCfgPresent_MigratesAndWritesJson()
     {
         using var temp = new TempDirectory();
-        string jsonPath = System.IO.Path.Combine(temp.Path, "audsw.json");
-        string legacyPath = System.IO.Path.Combine(temp.Path, "audsw.cfg");
-        System.IO.File.WriteAllText(legacyPath, "device1 = Speakers\nhotkey = ctrl+alt+u\n");
+        string jsonPath = System.IO.Path.Combine(temp.Path, "soundflip.json");
+        string legacyCfgPath = System.IO.Path.Combine(temp.Path, "audsw.cfg");
+        System.IO.File.WriteAllText(legacyCfgPath, "device1 = Speakers\nhotkey = ctrl+alt+u\n");
 
-        var settings = SettingsStore.Load(jsonPath, legacyPath);
+        var settings = SettingsStore.Load(jsonPath, legacyCfgPath: legacyCfgPath);
 
         Assert.Single(settings.Outputs);
         Assert.Equal("Speakers", settings.Outputs[0].Match);
         Assert.Equal("ctrl+alt+u", settings.CycleOutputs);
         Assert.True(System.IO.File.Exists(jsonPath), "migration should persist a JSON file");
+    }
+
+    // The app was renamed from audsw to SoundFlip; an audsw-era JSON file must be
+    // imported into the new location on first launch.
+    [Fact]
+    public void Load_NoJsonButAudswJsonPresent_MigratesAndWritesNewJson()
+    {
+        using var temp = new TempDirectory();
+        string jsonPath = System.IO.Path.Combine(temp.Path, "soundflip.json");
+        string legacyJsonPath = System.IO.Path.Combine(temp.Path, "audsw.json");
+        SettingsStore.Save(new AppSettings
+        {
+            Outputs = { new DeviceEntry { Match = "Headphones" } },
+            CycleOutputs = "ctrl+alt+h",
+        }, legacyJsonPath);
+
+        var settings = SettingsStore.Load(jsonPath, legacyJsonPath);
+
+        Assert.Single(settings.Outputs);
+        Assert.Equal("Headphones", settings.Outputs[0].Match);
+        Assert.Equal("ctrl+alt+h", settings.CycleOutputs);
+        Assert.True(System.IO.File.Exists(jsonPath), "migration should persist the new JSON file");
+    }
+
+    // Both legacy formats present: the newer audsw JSON wins over the flat cfg.
+    [Fact]
+    public void Load_BothLegacyFormatsPresent_PrefersAudswJson()
+    {
+        using var temp = new TempDirectory();
+        string jsonPath = System.IO.Path.Combine(temp.Path, "soundflip.json");
+        string legacyJsonPath = System.IO.Path.Combine(temp.Path, "audsw.json");
+        string legacyCfgPath = System.IO.Path.Combine(temp.Path, "audsw.cfg");
+        SettingsStore.Save(new AppSettings { Outputs = { new DeviceEntry { Match = "FromJson" } } }, legacyJsonPath);
+        System.IO.File.WriteAllText(legacyCfgPath, "device1 = FromCfg\n");
+
+        var settings = SettingsStore.Load(jsonPath, legacyJsonPath, legacyCfgPath);
+
+        Assert.Single(settings.Outputs);
+        Assert.Equal("FromJson", settings.Outputs[0].Match);
     }
 }

@@ -1,6 +1,6 @@
 using System.Windows.Forms;
 
-namespace audsw.Tests;
+namespace SoundFlip.Tests;
 
 public sealed class HotKeyTests
 {

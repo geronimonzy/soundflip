@@ -1,4 +1,4 @@
-namespace audsw.Tests;
+namespace SoundFlip.Tests;
 
 public sealed class CommandLineTests
 {
@@ -110,9 +110,9 @@ public sealed class CommandLineTests
     [Fact]
     public void HelpText_IncludesSettingsPath()
     {
-        string help = CommandLine.HelpText(@"C:\Users\me\AppData\Local\audsw\audsw.cfg");
+        string help = CommandLine.HelpText(@"C:\Users\me\AppData\Local\SoundFlip\soundflip.json");
 
-        Assert.Contains("audsw help", help);
-        Assert.Contains(@"C:\Users\me\AppData\Local\audsw\audsw.cfg", help);
+        Assert.Contains("soundflip help", help);
+        Assert.Contains(@"C:\Users\me\AppData\Local\SoundFlip\soundflip.json", help);
     }
 }

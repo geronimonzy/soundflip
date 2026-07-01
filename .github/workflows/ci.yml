@@ -25,39 +25,39 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore .\audsw.Tests\audsw.Tests.csproj
+        run: dotnet restore .\soundflip.Tests\soundflip.Tests.csproj
 
       - name: Build tests and app
-        run: dotnet build .\audsw.Tests\audsw.Tests.csproj -c Release --no-restore
+        run: dotnet build .\soundflip.Tests\soundflip.Tests.csproj -c Release --no-restore
 
       - name: Run unit tests
-        run: dotnet test .\audsw.Tests\audsw.Tests.csproj -c Release --no-build --verbosity normal
+        run: dotnet test .\soundflip.Tests\soundflip.Tests.csproj -c Release --no-build --verbosity normal
 
       - name: Publish app
         shell: pwsh
         run: .\build.ps1
 
-      # audsw is a WinExe, so PowerShell does not wait for it or surface its exit
+      # soundflip is a WinExe, so PowerShell does not wait for it or surface its exit
       # code on a bare invocation; Start-Process -Wait with redirected output does.
       - name: Smoke check help output
         shell: pwsh
         run: |
-          $helpLog = Join-Path $env:RUNNER_TEMP 'audsw-help.txt'
-          $p = Start-Process -FilePath .\dist\audsw.exe -ArgumentList 'help' `
+          $helpLog = Join-Path $env:RUNNER_TEMP 'soundflip-help.txt'
+          $p = Start-Process -FilePath .\dist\soundflip.exe -ArgumentList 'help' `
             -NoNewWindow -Wait -PassThru -RedirectStandardOutput $helpLog
           Get-Content $helpLog
-          if ($p.ExitCode -ne 0) { throw "audsw help exited with code $($p.ExitCode)" }
-          if (-not (Select-String -Path $helpLog -Pattern 'audsw' -Quiet)) { throw 'help output looks empty' }
+          if ($p.ExitCode -ne 0) { throw "soundflip help exited with code $($p.ExitCode)" }
+          if (-not (Select-String -Path $helpLog -Pattern 'soundflip' -Quiet)) { throw 'help output looks empty' }
 
       - name: Smoke check asset export
         shell: pwsh
         run: |
-          $outDir = Join-Path $env:RUNNER_TEMP 'audsw-store-assets'
+          $outDir = Join-Path $env:RUNNER_TEMP 'soundflip-store-assets'
           if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
 
-          $p = Start-Process -FilePath .\dist\audsw.exe -ArgumentList "export-assets `"$outDir`"" `
+          $p = Start-Process -FilePath .\dist\soundflip.exe -ArgumentList "export-assets `"$outDir`"" `
             -NoNewWindow -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "audsw export-assets exited with code $($p.ExitCode)" }
+          if ($p.ExitCode -ne 0) { throw "soundflip export-assets exited with code $($p.ExitCode)" }
 
           $expected = @(
             'Square44x44Logo.png',
@@ -77,6 +77,6 @@ jobs:
       - name: Upload published bundle
         uses: actions/upload-artifact@v4
         with:
-          name: audsw-dist-${{ github.sha }}
+          name: soundflip-dist-${{ github.sha }}
           path: dist
           if-no-files-found: error

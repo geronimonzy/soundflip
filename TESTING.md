@@ -10,15 +10,15 @@ how each app resolves its audio device.
 
 ```powershell
 .\build.ps1
-.\dist\audsw.exe          # tray app
+.\dist\soundflip.exe          # tray app
 ```
 
 ## A. Core switching
 
-- [ ] `audsw list` shows playback devices, `*` on the current default.
-- [ ] `audsw list inputs` shows capture devices, `*` on the current default.
-- [ ] `audsw set output <name>` changes the default playback device.
-- [ ] `audsw set input <name>` changes the default capture device.
+- [ ] `soundflip list` shows playback devices, `*` on the current default.
+- [ ] `soundflip list inputs` shows capture devices, `*` on the current default.
+- [ ] `soundflip set output <name>` changes the default playback device.
+- [ ] `soundflip set input <name>` changes the default capture device.
 - [ ] In the tray menu, **Output ▸** / **Input ▸** list active devices with ● on the
       current default.
 
@@ -61,11 +61,18 @@ can set expectations in the Store listing.
 
 ## D. Persistence & migration
 
-- [ ] Settings survive an app restart (`%LocalAppData%\audsw\audsw.json`).
-- [ ] An existing `%LocalAppData%\audsw\audsw.cfg` from an older build is imported
-      on first launch (device1/device2 → output ring, hotkey → cycle-output hotkey)
-      and an `audsw.json` is written.
+- [ ] Settings survive an app restart (`%LocalAppData%\SoundFlip\soundflip.json`).
+- [ ] An existing `%LocalAppData%\audsw\audsw.json` (pre-rename install) is imported
+      on first launch and `soundflip.json` is written.
+- [ ] An existing `%LocalAppData%\audsw\audsw.cfg` (oldest format) is imported
+      on first launch (device1/device2 → output ring, hotkey → cycle-output hotkey).
 - [ ] **Start with Windows** toggles in packaged Store/MSIX builds (StartupTask) AND
       in the unpackaged exe (HKCU Run key appears/disappears; app starts on sign-in).
-- [ ] Double-clicking `audsw.exe` opens no console window (not even a flash);
-      `audsw list` from a terminal still prints (note: prompt may return first).
+- [ ] A pre-rename `audsw` HKCU Run value is replaced by a `SoundFlip` value pointing
+      at the current exe on next status check.
+- [ ] Double-clicking `soundflip.exe` opens no console window (not even a flash);
+      `soundflip list` from a terminal still prints (note: prompt may return first).
+- [ ] **About** shows publisher, copyright, homepage/support links (no "metadata
+      still needs to be configured" warning); Homepage/Support open the GitHub pages.
+- [ ] Hotkeys window spacing is symmetric (equal air above the first row and below
+      the second), nothing cramped.

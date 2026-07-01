@@ -49,11 +49,11 @@ static class StoreAssetExporter
             var iconRect = new RectangleF(card.Left + card.Height * 0.16F, card.Top + card.Height * 0.18F, card.Height * 0.64F, card.Height * 0.64F);
             TrayArt.DrawSpeaker(g, iconRect, Color.White);
 
-            using var font = new Font("Segoe UI Semibold", height * 0.25F, GraphicsUnit.Pixel);
+            var textRect = new RectangleF(iconRect.Right + card.Height * 0.16F, card.Top, card.Right - iconRect.Right - card.Height * 0.24F, card.Height);
+            using var font = FitFont(g, AppMetadata.ProductName, height * 0.25F, textRect.Width);
             using var brush = new SolidBrush(Color.White);
             using var format = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
-            var textRect = new RectangleF(iconRect.Right + card.Height * 0.16F, card.Top, card.Right - iconRect.Right - card.Height * 0.24F, card.Height);
-            g.DrawString("audsw", font, brush, textRect, format);
+            g.DrawString(AppMetadata.ProductName, font, brush, textRect, format);
             return bitmap;
         }
 
@@ -62,13 +62,28 @@ static class StoreAssetExporter
 
         if (width >= 120)
         {
-            using var font = new Font("Segoe UI Semibold", Math.Min(width * 0.12F, 34F), GraphicsUnit.Pixel);
+            var textRect = new RectangleF(card.Left, card.Bottom - card.Height * 0.25F, card.Width, card.Height * 0.18F);
+            using var font = FitFont(g, AppMetadata.ProductName, Math.Min(width * 0.12F, 34F), textRect.Width);
             using var brush = new SolidBrush(Color.White);
             using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            var textRect = new RectangleF(card.Left, card.Bottom - card.Height * 0.25F, card.Width, card.Height * 0.18F);
-            g.DrawString("audsw", font, brush, textRect, format);
+            g.DrawString(AppMetadata.ProductName, font, brush, textRect, format);
         }
 
         return bitmap;
+    }
+
+    // Shrink the wordmark font until the text fits the given width, so any
+    // product name renders without being clipped.
+    static Font FitFont(Graphics g, string text, float sizePixels, float maxWidth)
+    {
+        var font = new Font("Segoe UI Semibold", sizePixels, GraphicsUnit.Pixel);
+        while (sizePixels > 6F && g.MeasureString(text, font).Width > maxWidth)
+        {
+            sizePixels *= 0.9F;
+            font.Dispose();
+            font = new Font("Segoe UI Semibold", sizePixels, GraphicsUnit.Pixel);
+        }
+
+        return font;
     }
 }

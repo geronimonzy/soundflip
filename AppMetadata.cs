@@ -9,11 +9,11 @@ static class AppMetadata
     public static string ProductName =>
         GetAttribute<AssemblyProductAttribute>(attr => attr.Product)
         ?? Application.ProductName
-        ?? "audsw";
+        ?? "SoundFlip";
 
     public static string Description =>
         GetAttribute<AssemblyDescriptionAttribute>(attr => attr.Description)
-        ?? "Minimal Windows audio output switcher.";
+        ?? "Minimal Windows audio device switcher.";
 
     public static string Company => GetAttribute<AssemblyCompanyAttribute>(attr => attr.Company) ?? "";
 

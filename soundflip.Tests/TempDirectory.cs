@@ -1,4 +1,4 @@
-namespace audsw.Tests;
+namespace SoundFlip.Tests;
 
 sealed class TempDirectory : IDisposable
 {
@@ -6,7 +6,7 @@ sealed class TempDirectory : IDisposable
 
     public TempDirectory()
     {
-        Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "audsw-tests-" + Guid.NewGuid().ToString("N"));
+        Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "soundflip-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path);
     }
 

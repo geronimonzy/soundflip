@@ -9,11 +9,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>audsw</AssemblyName>
-    <RootNamespace>AudioSwitcher</RootNamespace>
-    <Product>audsw</Product>
-    <Version>1.1.5</Version>
-    <Description>Minimal Windows audio output switcher with tray-based device toggling.</Description>
+    <AssemblyName>soundflip</AssemblyName>
+    <RootNamespace>SoundFlip</RootNamespace>
+    <Product>SoundFlip</Product>
+    <Version>1.3.0</Version>
+    <Description>Minimal Windows audio device switcher with tray-based output and input toggling.</Description>
+    <Company>Kirill Fedorov</Company>
+    <Copyright>© 2026 Kirill Fedorov</Copyright>
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- Single self-contained .exe, no install / no .NET runtime needed on the machine -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -28,7 +30,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="audsw.Tests/**/*.cs" />
+    <Compile Remove="soundflip.Tests/**/*.cs" />
+  </ItemGroup>
+
+  <!-- Surfaced in the About dialog via AssemblyMetadataAttribute. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="HomepageUrl" Value="https://github.com/geronimonzy/audioSwitcher" />
+    <AssemblyMetadata Include="SupportUrl" Value="https://github.com/geronimonzy/audioSwitcher/issues" />
   </ItemGroup>
 
   <!-- The package targets .NET Framework; it works fine on net8-windows, so

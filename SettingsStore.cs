@@ -28,23 +28,38 @@ static class SettingsStore
     };
 
     public static string SettingsDirectory =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SoundFlip");
+
+    public static string SettingsPath => Path.Combine(SettingsDirectory, "soundflip.json");
+
+    // Pre-rename installs (the app used to be called audsw) kept settings here.
+    static string LegacyDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "audsw");
 
-    public static string SettingsPath => Path.Combine(SettingsDirectory, "audsw.json");
+    public static string LegacyJsonPath => Path.Combine(LegacyDirectory, "audsw.json");
 
-    public static string LegacyPath => Path.Combine(SettingsDirectory, "audsw.cfg");
+    public static string LegacyCfgPath => Path.Combine(LegacyDirectory, "audsw.cfg");
 
-    public static AppSettings Load() => Load(SettingsPath, LegacyPath);
+    public static AppSettings Load() => Load(SettingsPath, LegacyJsonPath, LegacyCfgPath);
 
-    internal static AppSettings Load(string path, string? legacyPath = null)
+    internal static AppSettings Load(string path, string? legacyJsonPath = null, string? legacyCfgPath = null)
     {
         if (File.Exists(path))
             return Deserialize(File.ReadAllText(path));
 
-        // One-time migration: import the old flat audsw.cfg, then persist as JSON.
-        if (legacyPath is not null && File.Exists(legacyPath))
+        // One-time migrations, newest format first: the audsw-era JSON, then the
+        // original flat audsw.cfg. Either way the result is persisted at the new
+        // path; the old files are left in place untouched.
+        if (legacyJsonPath is not null && File.Exists(legacyJsonPath))
         {
-            var migrated = LegacyCfg.Migrate(File.ReadAllText(legacyPath));
+            var migrated = Deserialize(File.ReadAllText(legacyJsonPath));
+            Save(migrated, path);
+            return migrated;
+        }
+
+        if (legacyCfgPath is not null && File.Exists(legacyCfgPath))
+        {
+            var migrated = LegacyCfg.Migrate(File.ReadAllText(legacyCfgPath));
             Save(migrated, path);
             return migrated;
         }
