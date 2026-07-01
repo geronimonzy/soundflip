@@ -8,6 +8,7 @@ sealed class TrayApp : IDisposable
     AppSettings _settings;
     readonly CoreAudioController _controller = new();
     readonly TaskbarIcon _icon;
+    readonly MenuFlyout _menu = new();
     readonly HotkeyManager _hotkeys = new();
     SettingsWindow? _settingsWindow;
 
@@ -23,9 +24,12 @@ sealed class TrayApp : IDisposable
             DoubleClickCommand = new RelayCommand(CycleOutputs),
         };
 
-        var menu = new MenuFlyout();
-        menu.Opening += (_, _) => BuildMenu(menu);
-        _icon.ContextFlyout = menu;
+        // In the default (PopupMenu) mode H.NotifyIcon builds a native menu from the
+        // flyout's Items at click time and does NOT raise MenuFlyout.Opening, so the
+        // items must already be populated. We keep them fresh via UpdateTooltip().
+        _menu.Opening += (_, _) => BuildMenu(_menu);
+        _icon.ContextFlyout = _menu;
+        BuildMenu(_menu);
         _icon.ForceCreate();
 
         RebindHotkeys();
@@ -211,6 +215,10 @@ sealed class TrayApp : IDisposable
     {
         string current = Audio.CurrentDefault(_controller, AudioKind.Output)?.FullName ?? "unknown";
         _icon.ToolTipText = Truncate(AppMetadata.ProductName + " - " + current, 63);
+
+        // The native context menu is snapshotted from _menu.Items at click time, so
+        // rebuild it whenever the current device or settings change.
+        BuildMenu(_menu);
     }
 
     void Notify(string title, string message)
