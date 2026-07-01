@@ -308,14 +308,16 @@ sealed class ToastForm : Form
         TopMost = true;
         Font = new Font("Segoe UI", 10.5F);
 
-        var measured = TextRenderer.MeasureText(
-            _message,
-            Font,
-            new Size(MaxTextWidth, 10_000),
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
+        // Measure with the same GDI+ engine and StringFormat used for drawing.
+        // GDI (TextRenderer) wraps at different points than GDI+ (DrawString), so
+        // measuring with one and drawing with the other clipped long messages.
+        using var format = TextFormat();
+        using var probe = Graphics.FromHwnd(IntPtr.Zero);
+        probe.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+        var measured = probe.MeasureString(_message, Font, MaxTextWidth, format);
 
-        Width = Math.Max(Math.Min(measured.Width + PaddingX * 2, MaxTextWidth + PaddingX * 2), 180);
-        Height = Math.Max(measured.Height + PaddingY * 2, 56);
+        Width = Math.Max((int)MathF.Ceiling(measured.Width) + PaddingX * 2 + 2, 180);
+        Height = Math.Max((int)MathF.Ceiling(measured.Height) + PaddingY * 2 + 2, 56);
 
         var screen = Screen.FromPoint(Cursor.Position);
         var area = screen.WorkingArea;
@@ -327,6 +329,14 @@ sealed class ToastForm : Form
             Close();
         };
     }
+
+    // One definition of the wrapping/alignment behavior, shared by the size
+    // measurement and the actual draw so they can never disagree.
+    static StringFormat TextFormat() => new()
+    {
+        Alignment = StringAlignment.Center,
+        LineAlignment = StringAlignment.Center,
+    };
 
     protected override bool ShowWithoutActivation => true;
 
@@ -384,12 +394,9 @@ sealed class ToastForm : Form
             using (var path = Gfx.Round(card, Radius))
                 g.FillPath(fill, path);
 
-            using var stringFormat = new StringFormat
-            {
-                Alignment = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center,
-                FormatFlags = StringFormatFlags.LineLimit,
-            };
+            // No LineLimit: the window was sized from an exact measurement, and
+            // LineLimit would drop the whole last line on a 1px rounding shortfall.
+            using var stringFormat = TextFormat();
             using var textBrush = new SolidBrush(_foreground);
             g.DrawString(
                 _message,

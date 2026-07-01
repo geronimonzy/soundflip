@@ -76,3 +76,5 @@ can set expectations in the Store listing.
       still needs to be configured" warning); Homepage/Support open the GitHub pages.
 - [ ] Hotkeys window spacing is symmetric (equal air above the first row and below
       the second), nothing cramped.
+- [ ] Toasts with long device names wrap onto multiple lines with no clipped or
+      missing last line (switch to a device with a very long name to check).
