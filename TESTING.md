@@ -30,7 +30,9 @@ how each app resolves its audio device.
 - [ ] Unticking a device drops it from the ring on the next cycle; ticks survive a
       restart (saved immediately).
 - [ ] **Hotkeys…** edits both cycle hotkeys in one window; saved combos work right away,
-      Cancel discards.
+      Cancel discards. Buttons follow the theme (no clipped controls, accent Save).
+- [ ] Picking **Hotkeys…** while the window is already open focuses it — no duplicate
+      window appears.
 - [ ] Assigning a hotkey already taken by another app shows the "in use" warning and
       the other hotkeys still work.
 

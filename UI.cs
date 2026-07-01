@@ -32,6 +32,10 @@ static class Theme
     public static Color Warning(bool light) => light ? Color.FromArgb(0xB2, 0x6B, 0x00) : Color.FromArgb(0xF0, 0xC0, 0x60);
     public static Color Error(bool light) => light ? Color.FromArgb(0xC4, 0x2B, 0x1C) : Color.FromArgb(0xF0, 0x70, 0x70);
     public static Color Accent => Color.FromArgb(0x2E, 0x9B, 0xF0);
+    public static Color AccentHover => Color.FromArgb(0x27, 0x84, 0xCC);
+    // Win11 "control fill": buttons/inputs sit slightly lighter (dark) or brighter
+    // (light) than the window background.
+    public static Color Card(bool light) => light ? Color.White : Color.FromArgb(58, 58, 58);
 }
 
 static class Gfx
