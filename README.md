@@ -1,12 +1,12 @@
 # SoundFlip — minimal Windows audio device switcher
 
-A small Windows utility that lives in the tray and switches **playback and recording**
-devices on global hotkeys — cycle through a ring of outputs or a ring of inputs,
-picked with checkboxes right in the tray menu — with focused CLI commands when
-needed. Built for people who swap devices constantly on calls, streams, and games.
+A small Windows utility that lives in the tray and switches **playback and
+recording** devices on global hotkeys — cycle through a ring of outputs or a
+ring of inputs, picked with checkboxes right in the tray menu. Call and voice
+apps (Teams, Discord, Zoom, ...) follow the switch, mic included.
 
-> SoundFlip was previously called **audsw**. Settings and autostart entries from
-> audsw installs are migrated automatically on first launch.
+> SoundFlip was previously called **audsw**. Settings and autostart entries
+> from audsw installs are migrated automatically on first launch.
 
 ## Commands
 
@@ -16,17 +16,11 @@ soundflip list [outputs|inputs]    list active devices (* = current default)
 soundflip set [output|input] <name>
                                    set the default device (case-insensitive substring)
 soundflip cycle [outputs|inputs]   advance the chosen ring to its next device
-soundflip daemon                   alias for launching the tray app
-soundflip export-assets <dir>      generate default Microsoft Store logo assets
-soundflip help                     show the usage text explicitly
+soundflip help                     show the usage text
 ```
 
 The scope words are optional and default to outputs, so `soundflip list`,
 `soundflip set <name>`, and `soundflip cycle` work on playback devices.
-
-Every switch sets both the *default* and *default communications* roles together —
-for outputs **and** inputs — so call/voice apps (Teams, Discord, Zoom, ...) follow
-the change. See `TESTING.md` for the manual verification checklist.
 
 ## Build
 
@@ -36,141 +30,43 @@ Needs the .NET 8 SDK on Windows. From this folder in PowerShell:
 .\build.ps1
 ```
 
-This produces a single self-contained `dist\soundflip.exe` (no .NET install needed
-to run it). The exe is a Windows GUI app: launching it never opens a console
-window, and CLI commands print into the terminal they were started from.
+This produces a single self-contained `dist\soundflip.exe` (no .NET install
+needed to run it). Launching it never opens a console window; CLI commands
+print into the terminal they were started from.
 
-## Tests
+## Tray app
 
-Run the focused unit tests on Windows with:
+Run `soundflip` — a speaker icon appears in the notification area. Right-click
+it for everything:
 
-```powershell
-dotnet test .\soundflip.Tests\soundflip.Tests.csproj -c Release
-```
-
-The test suite covers deterministic logic only: command parsing, settings
-JSON round-trip and legacy migration, ring-advance math, hotkey grammar,
-and Store asset export. It does not try to automate tray UI, audio device
-switching, or packaged startup behavior — see `TESTING.md` for the manual pass.
-
-## Tray app (recommended)
-
-Run `soundflip` (no window opens) to get a speaker icon in the notification area.
-Right-click it to:
-
-- **Cycle output / input** — advance the matching ring (also bound to hotkeys).
-- **Output / Input** — a live checklist of active devices: tick the ones you want
-  in the cycle ring (the menu stays open for multi-select), ● marks the current
-  default. Changes are saved immediately.
-- **Hotkeys…** — one window to view/change both cycle hotkeys at once.
-- **Start with Windows** — works in every build: packaged Store/MSIX builds use
-  the Windows startup task model, unpackaged builds use the per-user registry
-  Run key.
-- **About SoundFlip** — version, settings path, and release metadata.
+- **Cycle output / Cycle input** — jump to the next device in the ring.
+- **Output / Input** — live checklists of your active devices. Tick the ones
+  you want in the cycle ring (the menu stays open so you can tick several);
+  ● marks the current default. Changes take effect immediately.
+- **Hotkeys…** — set both cycle hotkeys in one window. Defaults to
+  `Ctrl+Alt+O` for outputs; combos are any modifiers plus a letter, digit, or
+  F-key. If another app already owns a combo, SoundFlip warns you once and
+  keeps the rest working.
+- **Start with Windows** — SoundFlip starts silently in the tray every time
+  you sign in. Toggle it off the same way.
+- **About SoundFlip** — version and links.
 - **Exit**.
 
-The menu, dialogs, and toast follow the Windows light/dark setting automatically
-(including dialog title bars), and use a Windows 11 style: rounded corners,
-flat themed controls, content + footer dialog layout.
+Double-clicking the icon cycles the output ring. Every switch shows a small
+toast with the new device name, and the icon tooltip always shows the current
+output. The menu, dialogs, and toasts follow your Windows light/dark theme.
 
-Double-clicking the icon cycles the output ring. Every switch pops a small toast
-showing the new device, and the icon tooltip shows the current output.
-
-### Hotkeys
-
-Two optional ring hotkeys — **cycle outputs** (default `Ctrl+Alt+O`) and **cycle
-inputs** — both set from the tray **Hotkeys…** window. Conflicting/unavailable
-combos are skipped with a one-off warning; the rest keep working.
-
-### Settings file
-
-Live settings are stored as JSON at `%LocalAppData%\SoundFlip\soundflip.json`.
-On first launch, settings from an older audsw install are imported automatically:
-`%LocalAppData%\audsw\audsw.json` if present, otherwise the original flat
-`audsw.cfg` (`device1`/`device2` become the output ring, `hotkey` becomes the
-cycle-output hotkey). The file is safe to hand-edit.
-
-## Downloading a release ("unknown publisher" warning)
-
-Release zips from the GitHub Releases page contain an **unsigned** exe, so
-Windows may show *"Windows protected your PC"* (SmartScreen) or an
-*Open File — Security Warning* with "Unknown publisher" the first time you run
-it. That is Mark-of-the-Web on a downloaded file, not a problem with the app.
-
-To verify and unblock a download:
-
-1. Check the zip against the `.sha256` file published with every release:
-
-   ```powershell
-   Get-FileHash .\soundflip-v1.3.3-win-x64.zip -Algorithm SHA256
-   ```
-
-2. Unblock it (either works):
-   - Right-click the zip **before extracting** → Properties → tick **Unblock** → OK, or
-   - `Unblock-File .\soundflip-v1.3.3-win-x64.zip` in PowerShell.
-   Extracting an unblocked zip yields an unblocked exe, and the warning is gone
-   for good on that machine.
-
-   If SmartScreen still interjects, click **More info → Run anyway**.
-
-Making the warning disappear entirely for everyone requires a code-signing
-certificate (e.g. Azure Trusted Signing) or distribution through the Microsoft
-Store — building from source with `.\build.ps1` also avoids it, since local
-builds carry no Mark-of-the-Web.
-
-## Run at login
-
-Use **Start with Windows** in the tray menu — it works in every build. Packaged
-Store/MSIX builds register a Windows startup task; unpackaged builds write a
-per-user registry Run entry (`HKCU\...\CurrentVersion\Run`). Either way the app
-starts silently in the tray with no window. A stale `audsw` Run entry from a
-previous install is migrated to the new name automatically.
-
-## Microsoft Store packaging
-
-Build an **unsigned MSIX** for Store submission (needs the Windows 10/11 SDK
-for `makeappx`):
-
-```powershell
-.\package-msix.ps1 -PackageName "<from Partner Center>" `
-                   -Publisher "CN=<from Partner Center>" `
-                   -PublisherDisplayName "<from Partner Center>"
-```
-
-The script publishes a non-single-file build (so Store differential updates
-stay small), generates the logo assets, fills `Store\Package.appxmanifest.template`
-(startup task + `soundflip` execution alias included), and packs
-`dist-msix\soundflip-<version>-x64.msix`. The package is intentionally unsigned:
-the Store signs uploads itself, which is also what removes the "unknown
-publisher" warning for Store installs. It cannot be sideloaded as-is.
-
-CI and the release workflow build this package on every run and upload it as a
-workflow artifact; the release build takes its identity values from the
-`MSIX_PACKAGE_NAME`, `MSIX_PUBLISHER`, and `MSIX_PUBLISHER_DISPLAY_NAME`
-repository variables when they are set.
-
-Standalone logo asset generation is also available:
-
-```powershell
-.\dist\soundflip.exe export-assets .\Store\Assets
-```
-
-## GitHub Actions
-
-- `.github/workflows/ci.yml` for Windows CI on pull requests to `main` and
-  pushes to `main`
-- `.github/workflows/release.yml` for tag-triggered GitHub Releases from tags
-  such as `v1.3.0`
-
-The release workflow builds on GitHub-hosted Windows runners, runs the unit
-tests, publishes `dist\`, zips that bundle, and uploads it to the GitHub
-Release.
+Your device picks and hotkeys are saved automatically to
+`%LocalAppData%\SoundFlip\soundflip.json` — safe to hand-edit if you like.
 
 ## How it works
 
-- Switching the default device uses the undocumented Windows `IPolicyConfig`
-  COM interface (via the `AudioSwitcher.AudioApi.CoreAudio` library) — the only
-  way to *set* (not just read) the default audio device on Windows.
+- Every switch sets both the *default* device and the *default communications*
+  device, for outputs **and** inputs — that's what makes call apps follow the
+  change instead of clinging to the old device.
+- Setting the default device uses the Windows `IPolicyConfig` COM interface
+  (via the `AudioSwitcher.AudioApi.CoreAudio` library) — the only way to *set*
+  (not just read) the default audio device on Windows.
 - The hotkeys use Win32 `RegisterHotKey` + a message loop, so they work
   system-wide while the tray app runs in the background.
 
@@ -182,7 +78,6 @@ telemetry, no network access; settings live in one local JSON file. See
 
 ## Credits
 
-The speaker icon (tray, exe, and Store assets) is the "Speaker 2" glyph from
+The speaker icon is the "Speaker 2" glyph from
 [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)
-by Microsoft, used under the MIT license. `app.ico` is generated from the same
-path data.
+by Microsoft, used under the MIT license.
