@@ -6,3 +6,9 @@
 /TestResults
 **/TestResults
 image-*.png
+/.kilo
+/AGENTS.md
+/CLAUDE.md
+/COMPETITIVE_REVIEW.md
+/DEPLOYMENT.md
+/TESTING.md
