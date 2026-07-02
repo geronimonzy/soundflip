@@ -33,6 +33,8 @@
 - Settings JSON holds `outputs`/`inputs` rings (`match` per entry) plus `cycleOutputs`/`cycleInputs` hotkeys. The legacy `audsw.cfg` (`device1`/`device2`/`hotkey`, `#` comments) is only read for one-time migration.
 - Supported hotkeys are modifier(s) plus `A-Z`, `0-9`, or `F1`-`F12`. Default is `ctrl+alt+o` for cycle-outputs.
 - `Store\Package.appxmanifest.template` is a packaging template, not a finished manifest. It still needs real publisher metadata before submission.
+- The speaker glyph (tray via `TrayArt.SpeakerPath`, exe via committed `app.ico`/`ApplicationIcon`, Store assets) is Fluent UI System Icons "Speaker 2" filled 24px (MIT). Regenerate `app.ico` from the same path data if the glyph changes; keep the README credit.
+- Releases are unsigned: `release.yml` uploads a `.sha256` next to the zip; the "unknown publisher" prompt on downloads is Mark-of-the-Web and only disappears with code signing or Store distribution.
 
 ## Dependency Quirk
 - `AudioSwitcher.AudioApi` and `AudioSwitcher.AudioApi.CoreAudio` are pinned to `4.0.0-alpha5`.

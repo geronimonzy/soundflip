@@ -90,6 +90,34 @@ On first launch, settings from an older audsw install are imported automatically
 `audsw.cfg` (`device1`/`device2` become the output ring, `hotkey` becomes the
 cycle-output hotkey). The file is safe to hand-edit.
 
+## Downloading a release ("unknown publisher" warning)
+
+Release zips from the GitHub Releases page contain an **unsigned** exe, so
+Windows may show *"Windows protected your PC"* (SmartScreen) or an
+*Open File — Security Warning* with "Unknown publisher" the first time you run
+it. That is Mark-of-the-Web on a downloaded file, not a problem with the app.
+
+To verify and unblock a download:
+
+1. Check the zip against the `.sha256` file published with every release:
+
+   ```powershell
+   Get-FileHash .\soundflip-v1.3.3-win-x64.zip -Algorithm SHA256
+   ```
+
+2. Unblock it (either works):
+   - Right-click the zip **before extracting** → Properties → tick **Unblock** → OK, or
+   - `Unblock-File .\soundflip-v1.3.3-win-x64.zip` in PowerShell.
+   Extracting an unblocked zip yields an unblocked exe, and the warning is gone
+   for good on that machine.
+
+   If SmartScreen still interjects, click **More info → Run anyway**.
+
+Making the warning disappear entirely for everyone requires a code-signing
+certificate (e.g. Azure Trusted Signing) or distribution through the Microsoft
+Store — building from source with `.\build.ps1` also avoids it, since local
+builds carry no Mark-of-the-Web.
+
 ## Run at login
 
 Use **Start with Windows** in the tray menu — it works in every build. Packaged
@@ -127,3 +155,10 @@ Release.
   way to *set* (not just read) the default audio device on Windows.
 - The hotkeys use Win32 `RegisterHotKey` + a message loop, so they work
   system-wide while the tray app runs in the background.
+
+## Credits
+
+The speaker icon (tray, exe, and Store assets) is the "Speaker 2" glyph from
+[Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)
+by Microsoft, used under the MIT license. `app.ico` is generated from the same
+path data.

@@ -78,3 +78,8 @@ can set expectations in the Store listing.
       the second), nothing cramped.
 - [ ] Toasts with long device names wrap onto multiple lines with no clipped or
       missing last line (switch to a device with a very long name to check).
+- [ ] `soundflip.exe` shows the Fluent speaker icon in Explorer/taskbar (from the
+      embedded `app.ico`), and the tray icon shows the same accent-colored glyph.
+- [ ] The GitHub release includes a `.sha256` asset whose hash matches
+      `Get-FileHash` on the downloaded zip; `Unblock-File` on the zip before
+      extraction removes the "unknown publisher" prompt on the extracted exe.

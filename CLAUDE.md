@@ -51,6 +51,8 @@ Practical verification path: run the unit tests, then publish and manually exerc
 - There is no settings window: cycle rings are ticked in the tray **Output**/**Input** device checklists (saved to JSON immediately; the dropdown stays open for multi-select, ● marks the current default), and both cycle hotkeys are edited together in the tray **Hotkeys…** window (`HotkeysWindow` in `Hotkeys.cs`). Pairs and per-device jump hotkeys were removed in 1.1.2; retired JSON properties (`pairs`, `cyclePairs`, per-entry `hotkey`) are silently ignored on load.
 - Supported hotkey grammar: modifier(s) plus `A-Z`, `0-9`, or `F1`-`F12`. Conflicting/unavailable hotkeys are skipped with a one-off warning; other configured hotkeys keep working.
 - "Start with Windows" works in every build: packaged Store/MSIX builds use `Windows.ApplicationModel.StartupTask`, unpackaged builds fall back to a per-user `HKCU\...\CurrentVersion\Run` registry value pointing at the running exe.
+- The speaker glyph everywhere (tray icon via `TrayArt.SpeakerPath` in `UI.cs`, exe icon via the committed `app.ico` + `<ApplicationIcon>`, Store assets) is the MIT-licensed Fluent UI System Icons "Speaker 2" filled 24px path — if the glyph changes, regenerate `app.ico` from the same path data and keep the README credit.
+- Release zips are unsigned; `release.yml` publishes a `.sha256` beside the zip and the README documents Unblock-File/SmartScreen. Removing the "unknown publisher" prompt entirely would need code signing or Store distribution.
 
 ## Dependency quirks
 

@@ -507,22 +507,54 @@ static class TrayArt
     {
         var state = g.Save();
         g.TranslateTransform(bounds.Left, bounds.Top);
-        g.ScaleTransform(bounds.Width / 32F, bounds.Height / 32F);
+        g.ScaleTransform(bounds.Width / 24F, bounds.Height / 24F);
 
         using var brush = new SolidBrush(color);
-        using var pen = new Pen(color, 2.4F) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-        PointF[] body =
-        {
-            new(5, 12),
-            new(11, 12),
-            new(18, 6),
-            new(18, 26),
-            new(11, 20),
-            new(5, 20),
-        };
-        g.FillPolygon(brush, body);
-        g.DrawArc(pen, 17, 10, 8, 12, -55, 110);
-        g.DrawArc(pen, 17, 5, 15, 22, -55, 110);
+        using var path = SpeakerPath();
+        g.FillPath(brush, path);
         g.Restore(state);
+    }
+
+    // "Speaker 2" (filled, 24px) from Microsoft's Fluent UI System Icons, MIT
+    // licensed: https://github.com/microsoft/fluentui-system-icons
+    // The SVG path is baked in as bezier/line segments in its native 24-unit space.
+    static GraphicsPath SpeakerPath()
+    {
+        var path = new GraphicsPath(FillMode.Winding);
+        path.StartFigure();
+        path.AddLine(15f, 4.25049f, 15f, 19.7461f);
+        path.AddBezier(15f, 19.7461f, 15f, 20.8247f, 13.7255f, 21.397f, 12.9194f, 20.6802f);
+        path.AddLine(12.9194f, 20.6802f, 8.42793f, 16.6865f);
+        path.AddBezier(8.42793f, 16.6865f, 8.29063f, 16.5644f, 8.11329f, 16.497f, 7.92956f, 16.497f);
+        path.AddLine(7.92956f, 16.497f, 4.25f, 16.497f);
+        path.AddBezier(4.25f, 16.497f, 3.00736f, 16.497f, 2f, 15.4896f, 2f, 14.247f);
+        path.AddLine(2f, 14.247f, 2f, 9.74907f);
+        path.AddBezier(2f, 9.74907f, 2f, 8.50643f, 3.00736f, 7.49907f, 4.25f, 7.49907f);
+        path.AddLine(4.25f, 7.49907f, 7.92961f, 7.49907f);
+        path.AddBezier(7.92961f, 7.49907f, 8.11333f, 7.49907f, 8.29065f, 7.43165f, 8.42794f, 7.30958f);
+        path.AddLine(8.42794f, 7.30958f, 12.9195f, 3.31631f);
+        path.AddBezier(12.9195f, 3.31631f, 13.7255f, 2.59964f, 15f, 3.17187f, 15f, 4.25049f);
+        path.CloseFigure();
+        path.StartFigure();
+        path.AddBezier(18.9916f, 5.89782f, 19.3244f, 5.65128f, 19.7941f, 5.72126f, 20.0407f, 6.05411f);
+        path.AddBezier(20.0407f, 6.05411f, 21.2717f, 7.71619f, 22f, 9.77439f, 22f, 12.0005f);
+        path.AddBezier(22f, 12.0005f, 22f, 14.2266f, 21.2717f, 16.2848f, 20.0407f, 17.9469f);
+        path.AddBezier(20.0407f, 17.9469f, 19.7941f, 18.2798f, 19.3244f, 18.3497f, 18.9916f, 18.1032f);
+        path.AddBezier(18.9916f, 18.1032f, 18.6587f, 17.8567f, 18.5888f, 17.387f, 18.8353f, 17.0541f);
+        path.AddBezier(18.8353f, 17.0541f, 19.8815f, 15.6416f, 20.5f, 13.8943f, 20.5f, 12.0005f);
+        path.AddBezier(20.5f, 12.0005f, 20.5f, 10.1067f, 19.8815f, 8.35945f, 18.8353f, 6.9469f);
+        path.AddBezier(18.8353f, 6.9469f, 18.5888f, 6.61404f, 18.6587f, 6.14435f, 18.9916f, 5.89782f);
+        path.CloseFigure();
+        path.StartFigure();
+        path.AddBezier(17.143f, 8.36982f, 17.5072f, 8.17262f, 17.9624f, 8.30806f, 18.1596f, 8.67233f);
+        path.AddBezier(18.1596f, 8.67233f, 18.6958f, 9.66294f, 19f, 10.7973f, 19f, 12.0005f);
+        path.AddBezier(19f, 12.0005f, 19f, 13.2037f, 18.6958f, 14.338f, 18.1596f, 15.3287f);
+        path.AddBezier(18.1596f, 15.3287f, 17.9624f, 15.6929f, 17.5072f, 15.8284f, 17.143f, 15.6312f);
+        path.AddBezier(17.143f, 15.6312f, 16.7787f, 15.434f, 16.6432f, 14.9788f, 16.8404f, 14.6146f);
+        path.AddBezier(16.8404f, 14.6146f, 17.2609f, 13.8378f, 17.5f, 12.9482f, 17.5f, 12.0005f);
+        path.AddBezier(17.5f, 12.0005f, 17.5f, 11.0528f, 17.2609f, 10.1632f, 16.8404f, 9.38642f);
+        path.AddBezier(16.8404f, 9.38642f, 16.6432f, 9.02216f, 16.7787f, 8.56701f, 17.143f, 8.36982f);
+        path.CloseFigure();
+        return path;
     }
 }

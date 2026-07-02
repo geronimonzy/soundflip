@@ -65,9 +65,18 @@ jobs:
           "asset_name=$zipName" >> $env:GITHUB_OUTPUT
           "asset_path=$zipPath" >> $env:GITHUB_OUTPUT
 
+          # Publish a SHA-256 alongside the zip so users can verify what they
+          # downloaded (the exe is unsigned, so this is the integrity story).
+          $hash = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $shaName = "$zipName.sha256"
+          "$hash *$zipName" | Set-Content $shaName -Encoding ascii
+          "checksum_path=$((Resolve-Path $shaName).Path)" >> $env:GITHUB_OUTPUT
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           name: SoundFlip ${{ github.ref_name }}
-          files: ${{ steps.package.outputs.asset_path }}
+          files: |
+            ${{ steps.package.outputs.asset_path }}
+            ${{ steps.package.outputs.checksum_path }}
           generate_release_notes: true
