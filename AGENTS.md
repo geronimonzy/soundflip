@@ -32,7 +32,8 @@
 - Supported commands: `soundflip`, `soundflip list [outputs|inputs]`, `soundflip set [output|input] <name>`, `soundflip cycle [outputs|inputs]`, `soundflip daemon`, `soundflip export-assets <dir>`, `soundflip help`.
 - Settings JSON holds `outputs`/`inputs` rings (`match` per entry) plus `cycleOutputs`/`cycleInputs` hotkeys. The legacy `audsw.cfg` (`device1`/`device2`/`hotkey`, `#` comments) is only read for one-time migration.
 - Supported hotkeys are modifier(s) plus `A-Z`, `0-9`, or `F1`-`F12`. Default is `ctrl+alt+o` for cycle-outputs.
-- `Store\Package.appxmanifest.template` is a packaging template, not a finished manifest. It still needs real publisher metadata before submission.
+- `Store\Package.appxmanifest.template` is filled in by `package-msix.ps1` (identity from parameters / `MSIX_*` repo variables, version from the csproj `<Version>` as `x.y.z.0`), which builds an unsigned MSIX to `dist-msix\` from a non-single-file publish (keeps Store differential updates small). The Store signs uploads; the unsigned package cannot be sideloaded. CI/release upload it as a workflow artifact only.
+- The repo is MIT-licensed (`LICENSE`); `PRIVACY.md` promises zero data collection and zero networking code — do not add networking without updating it.
 - The speaker glyph (tray via `TrayArt.SpeakerPath`, exe via committed `app.ico`/`ApplicationIcon`, Store assets) is Fluent UI System Icons "Speaker 2" filled 24px (MIT). Regenerate `app.ico` from the same path data if the glyph changes; keep the README credit.
 - Releases are unsigned: `release.yml` uploads a `.sha256` next to the zip; the "unknown publisher" prompt on downloads is Mark-of-the-Web and only disappears with code signing or Store distribution.
 

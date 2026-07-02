@@ -72,6 +72,26 @@ jobs:
           "$hash *$zipName" | Set-Content $shaName -Encoding ascii
           "checksum_path=$((Resolve-Path $shaName).Path)" >> $env:GITHUB_OUTPUT
 
+      # Unsigned MSIX for Microsoft Store submission (the Store signs uploads
+      # itself). Uploaded as a run artifact, NOT a release asset: end users
+      # cannot install an unsigned MSIX, so putting it on the release page
+      # would only confuse them. Real identity values come from repo variables
+      # once Partner Center is set up; until then dev placeholders are used.
+      - name: Build MSIX package (unsigned, for Store submission)
+        shell: pwsh
+        run: |
+          .\package-msix.ps1 `
+            -PackageName '${{ vars.MSIX_PACKAGE_NAME || 'KirillFedorov.SoundFlip' }}' `
+            -Publisher '${{ vars.MSIX_PUBLISHER || 'CN=00000000-0000-0000-0000-000000000000' }}' `
+            -PublisherDisplayName '${{ vars.MSIX_PUBLISHER_DISPLAY_NAME || 'Kirill Fedorov' }}'
+
+      - name: Upload MSIX package
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundflip-${{ github.ref_name }}-msix-unsigned
+          path: dist-msix/*.msix
+          if-no-files-found: error
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:

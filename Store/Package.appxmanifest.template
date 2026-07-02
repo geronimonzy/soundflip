@@ -9,8 +9,9 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap uap3 uap5 uap10 desktop rescap">
 
-  <!-- Replace the placeholder identity values before packaging or submission. -->
-  <Identity Name="__PACKAGE_NAME__" Publisher="__PUBLISHER__" Version="1.0.0.0" ProcessorArchitecture="x64" />
+  <!-- Placeholders are filled in by package-msix.ps1 (identity from its
+       parameters, version from the csproj <Version>). -->
+  <Identity Name="__PACKAGE_NAME__" Publisher="__PUBLISHER__" Version="__VERSION__" ProcessorArchitecture="x64" />
 
   <Properties>
     <DisplayName>SoundFlip</DisplayName>

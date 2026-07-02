@@ -83,3 +83,6 @@ can set expectations in the Store listing.
 - [ ] The GitHub release includes a `.sha256` asset whose hash matches
       `Get-FileHash` on the downloaded zip; `Unblock-File` on the zip before
       extraction removes the "unknown publisher" prompt on the extracted exe.
+- [ ] `.\package-msix.ps1` produces `dist-msix\soundflip-<version>-x64.msix`
+      whose manifest version matches the csproj `<Version>` + `.0`; the release
+      workflow uploads it as a run artifact (not a release asset).

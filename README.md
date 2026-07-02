@@ -126,16 +126,34 @@ per-user registry Run entry (`HKCU\...\CurrentVersion\Run`). Either way the app
 starts silently in the tray with no window. A stale `audsw` Run entry from a
 previous install is migrated to the new name automatically.
 
-## Store packaging helpers
+## Microsoft Store packaging
 
-Generate default Store logo assets after a Windows build:
+Build an **unsigned MSIX** for Store submission (needs the Windows 10/11 SDK
+for `makeappx`):
+
+```powershell
+.\package-msix.ps1 -PackageName "<from Partner Center>" `
+                   -Publisher "CN=<from Partner Center>" `
+                   -PublisherDisplayName "<from Partner Center>"
+```
+
+The script publishes a non-single-file build (so Store differential updates
+stay small), generates the logo assets, fills `Store\Package.appxmanifest.template`
+(startup task + `soundflip` execution alias included), and packs
+`dist-msix\soundflip-<version>-x64.msix`. The package is intentionally unsigned:
+the Store signs uploads itself, which is also what removes the "unknown
+publisher" warning for Store installs. It cannot be sideloaded as-is.
+
+CI and the release workflow build this package on every run and upload it as a
+workflow artifact; the release build takes its identity values from the
+`MSIX_PACKAGE_NAME`, `MSIX_PUBLISHER`, and `MSIX_PUBLISHER_DISPLAY_NAME`
+repository variables when they are set.
+
+Standalone logo asset generation is also available:
 
 ```powershell
 .\dist\soundflip.exe export-assets .\Store\Assets
 ```
-
-The repo also includes `Store\Package.appxmanifest.template` with the startup
-task and app execution alias wiring needed for a packaged desktop build.
 
 ## GitHub Actions
 
@@ -155,6 +173,12 @@ Release.
   way to *set* (not just read) the default audio device on Windows.
 - The hotkeys use Win32 `RegisterHotKey` + a message loop, so they work
   system-wide while the tray app runs in the background.
+
+## License & privacy
+
+SoundFlip is [MIT-licensed](LICENSE). It collects no data whatsoever — no
+telemetry, no network access; settings live in one local JSON file. See
+[PRIVACY.md](PRIVACY.md) for the full statement.
 
 ## Credits
 

@@ -1,6 +1,7 @@
 /bin
 /obj
 /dist
+/dist-msix
 /dist_no_ui
 /TestResults
 **/TestResults

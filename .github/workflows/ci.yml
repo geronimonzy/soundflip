@@ -74,9 +74,23 @@ jobs:
             }
           }
 
+      # Validates the manifest template + packaging layout on every push
+      # (makeappx schema-checks the manifest). Dev identity placeholders are fine
+      # here; the artifact is not submittable.
+      - name: Build MSIX package (unsigned)
+        shell: pwsh
+        run: .\package-msix.ps1
+
       - name: Upload published bundle
         uses: actions/upload-artifact@v4
         with:
           name: soundflip-dist-${{ github.sha }}
           path: dist
+          if-no-files-found: error
+
+      - name: Upload MSIX package
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundflip-msix-unsigned-${{ github.sha }}
+          path: dist-msix/*.msix
           if-no-files-found: error

@@ -9,3 +9,4 @@ Write-Host "  soundflip.exe        tray-first app and CLI (windowless; no consol
 Write-Host ""
 Write-Host "Settings are stored per-user at %LocalAppData%\SoundFlip\soundflip.json"
 Write-Host "Run '.\dist\soundflip.exe export-assets .\Store\Assets' to generate default Store logos"
+Write-Host "Run '.\package-msix.ps1' to build an unsigned MSIX for Microsoft Store submission"

@@ -59,7 +59,8 @@ Practical verification path: run the unit tests, then publish and manually exerc
 - `AudioSwitcher.AudioApi` / `AudioSwitcher.AudioApi.CoreAudio` are pinned to `4.0.0-alpha5` — the only public way to *set* (not just read) the Windows default audio device, via the undocumented `IPolicyConfig` COM interface.
 - `NU1701` is intentionally suppressed in `soundflip.csproj`: those packages target .NET Framework but work fine on `net8.0-windows`.
 - WinRT APIs for packaged startup-task integration require the version-specific `net8.0-windows10.0.22621.0` TFM, not the `Microsoft.Windows.SDK.Contracts` package.
-- `Store\Package.appxmanifest.template` is a packaging template, not a finished manifest — it still needs real publisher metadata before Store submission.
+- `Store\Package.appxmanifest.template` is filled in by `package-msix.ps1` (identity from script parameters / repo variables `MSIX_*`, version from the csproj `<Version>` as `x.y.z.0`). The script builds an **unsigned** MSIX to `dist-msix\` from a **non-single-file** publish (MSIX differential updates work per file block, so the runtime must stay as separate unchanging files). The Store signs uploads itself; the unsigned package cannot be sideloaded. CI/release upload it as a workflow artifact, never as a release asset.
+- The repo is MIT-licensed (`LICENSE`); `PRIVACY.md` documents that the app collects/transmits nothing (there is deliberately zero networking code — keep it that way or update PRIVACY.md).
 
 ## CI/CD
 
