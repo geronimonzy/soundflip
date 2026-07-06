@@ -5,6 +5,22 @@ recording** devices on global hotkeys — cycle through a ring of outputs or a
 ring of inputs, picked with checkboxes right in the tray menu. Call and voice
 apps (Teams, Discord, Zoom, ...) follow the switch, mic included.
 
+<p align="center">
+  <img src="screenshots/taskbarWindow.png" width="330"
+       alt="SoundFlip tray menu — current output/input, cycle commands with hotkeys, device checklists">
+</p>
+
+<p align="center">
+  <a href="https://apps.microsoft.com/detail/9NZ9F23HXFSB?mode=direct">
+    <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200"
+         alt="Get SoundFlip from the Microsoft Store">
+  </a>
+</p>
+
+Prefer a plain download? Grab the zip from the
+[latest release](https://github.com/geronimonzy/soundflip/releases/latest) —
+a single self-contained exe, nothing to install.
+
 > SoundFlip was previously called **audsw**. Settings and autostart entries
 > from audsw installs are migrated automatically on first launch.
 
@@ -55,6 +71,11 @@ it for everything:
 Double-clicking the icon cycles the output ring. Every switch shows a small
 toast with the new device name, and the icon tooltip always shows the current
 output. The menu, dialogs, and toasts follow your Windows light/dark theme.
+
+<p align="center">
+  <img src="screenshots/hotkeys.png" width="48%" alt="Hotkeys window">
+  <img src="screenshots/about.png" width="48%" alt="About SoundFlip dialog">
+</p>
 
 Your device picks and hotkeys are saved automatically to
 `%LocalAppData%\SoundFlip\soundflip.json` — safe to hand-edit if you like.
