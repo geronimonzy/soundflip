@@ -40,4 +40,56 @@ public sealed class HotKeyTests
 
         Assert.Equal("alt+shift+win+f4", spec);
     }
+
+    [Fact]
+    public void TryParse_ParsesNumpadDigit()
+    {
+        bool ok = HotKey.TryParse("ctrl+num5", out HotKey.HotkeySpec hotkey);
+
+        Assert.True(ok);
+        Assert.Equal(0x65u, hotkey.VirtualKey);
+        Assert.Equal("ctrl+num5", HotKey.Format(hotkey));
+    }
+
+    [Fact]
+    public void FromKeyEvent_NumpadDigitStaysOnNumpad()
+    {
+        string? spec = HotKey.FromKeyEvent(Keys.NumPad5, ctrl: true, alt: false, shift: false, win: false);
+
+        Assert.Equal("ctrl+num5", spec);
+    }
+
+    [Fact]
+    public void TryParse_ParsesTopRowDigit()
+    {
+        bool ok = HotKey.TryParse("ctrl+5", out HotKey.HotkeySpec hotkey);
+
+        Assert.True(ok);
+        Assert.Equal(0x35u, hotkey.VirtualKey);
+        Assert.Equal("ctrl+5", HotKey.Format(hotkey));
+    }
+
+    [Fact]
+    public void TryParse_RejectsEmptyToken()
+    {
+        Assert.False(HotKey.TryParse("ctrl++a", out HotKey.HotkeySpec _));
+    }
+
+    [Fact]
+    public void TryParse_RejectsDuplicateModifier()
+    {
+        Assert.False(HotKey.TryParse("ctrl+ctrl+a", out HotKey.HotkeySpec _));
+    }
+
+    [Fact]
+    public void TryParse_RejectsZeroPaddedFKey()
+    {
+        Assert.False(HotKey.TryParse("ctrl+f01", out HotKey.HotkeySpec _));
+    }
+
+    [Fact]
+    public void TryParse_RejectsTrailingSeparator()
+    {
+        Assert.False(HotKey.TryParse("ctrl+a+", out HotKey.HotkeySpec _));
+    }
 }

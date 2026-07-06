@@ -31,45 +31,53 @@ static class StoreAssetExporter
     static Bitmap Create(int width, int height, bool wordmark)
     {
         var bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
-        using var g = Graphics.FromImage(bitmap);
-        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-        g.Clear(Color.Transparent);
-
-        var card = wordmark
-            ? new RectangleF(width * 0.06F, height * 0.18F, width * 0.88F, height * 0.64F)
-            : new RectangleF(width * 0.12F, height * 0.12F, width * 0.76F, height * 0.76F);
-
-        using (var fill = new SolidBrush(Theme.Accent))
-        using (var path = Gfx.Round(card, MathF.Min(card.Width, card.Height) * 0.18F))
-            g.FillPath(fill, path);
-
-        if (wordmark)
+        try
         {
-            var iconRect = new RectangleF(card.Left + card.Height * 0.16F, card.Top + card.Height * 0.18F, card.Height * 0.64F, card.Height * 0.64F);
-            TrayArt.DrawSpeaker(g, iconRect, Color.White);
+            using var g = Graphics.FromImage(bitmap);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            g.Clear(Color.Transparent);
 
-            var textRect = new RectangleF(iconRect.Right + card.Height * 0.16F, card.Top, card.Right - iconRect.Right - card.Height * 0.24F, card.Height);
-            using var font = FitFont(g, AppMetadata.ProductName, height * 0.25F, textRect.Width);
-            using var brush = new SolidBrush(Color.White);
-            using var format = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
-            g.DrawString(AppMetadata.ProductName, font, brush, textRect, format);
+            var card = wordmark
+                ? new RectangleF(width * 0.06F, height * 0.18F, width * 0.88F, height * 0.64F)
+                : new RectangleF(width * 0.12F, height * 0.12F, width * 0.76F, height * 0.76F);
+
+            using (var fill = new SolidBrush(Theme.Accent))
+            using (var path = Gfx.Round(card, MathF.Min(card.Width, card.Height) * 0.18F))
+                g.FillPath(fill, path);
+
+            if (wordmark)
+            {
+                var iconRect = new RectangleF(card.Left + card.Height * 0.16F, card.Top + card.Height * 0.18F, card.Height * 0.64F, card.Height * 0.64F);
+                TrayArt.DrawSpeaker(g, iconRect, Color.White);
+
+                var textRect = new RectangleF(iconRect.Right + card.Height * 0.16F, card.Top, card.Right - iconRect.Right - card.Height * 0.24F, card.Height);
+                using var font = FitFont(g, AppMetadata.ProductName, height * 0.25F, textRect.Width);
+                using var brush = new SolidBrush(Color.White);
+                using var format = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
+                g.DrawString(AppMetadata.ProductName, font, brush, textRect, format);
+                return bitmap;
+            }
+
+            var squareIcon = new RectangleF(card.Left + card.Width * 0.22F, card.Top + card.Height * 0.16F, card.Width * 0.56F, card.Height * 0.56F);
+            TrayArt.DrawSpeaker(g, squareIcon, Color.White);
+
+            if (width >= 120)
+            {
+                var textRect = new RectangleF(card.Left, card.Bottom - card.Height * 0.25F, card.Width, card.Height * 0.18F);
+                using var font = FitFont(g, AppMetadata.ProductName, Math.Min(width * 0.12F, 34F), textRect.Width);
+                using var brush = new SolidBrush(Color.White);
+                using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString(AppMetadata.ProductName, font, brush, textRect, format);
+            }
+
             return bitmap;
         }
-
-        var squareIcon = new RectangleF(card.Left + card.Width * 0.22F, card.Top + card.Height * 0.16F, card.Width * 0.56F, card.Height * 0.56F);
-        TrayArt.DrawSpeaker(g, squareIcon, Color.White);
-
-        if (width >= 120)
+        catch
         {
-            var textRect = new RectangleF(card.Left, card.Bottom - card.Height * 0.25F, card.Width, card.Height * 0.18F);
-            using var font = FitFont(g, AppMetadata.ProductName, Math.Min(width * 0.12F, 34F), textRect.Width);
-            using var brush = new SolidBrush(Color.White);
-            using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(AppMetadata.ProductName, font, brush, textRect, format);
+            bitmap.Dispose();
+            throw;
         }
-
-        return bitmap;
     }
 
     // Shrink the wordmark font until the text fits the given width, so any

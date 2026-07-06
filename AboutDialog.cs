@@ -7,6 +7,17 @@ static class AboutDialog
     {
         bool light = Theme.IsLight;
 
+        // Every Font created for this dialog is collected here and disposed
+        // together in FormClosed — WinForms never disposes a Font assigned to a
+        // control on its own.
+        var fonts = new List<Font>();
+        Font MakeFont(string family, float size)
+        {
+            var font = new Font(family, size);
+            fonts.Add(font);
+            return font;
+        }
+
         using var form = new Form
         {
             Text = $"About {AppMetadata.ProductName}",
@@ -19,13 +30,17 @@ static class AboutDialog
             ClientSize = new Size(470, 312),
             BackColor = Theme.Content(light),
             ForeColor = Theme.Fore(light),
-            Font = new Font("Segoe UI", 9.5F),
+            Font = MakeFont("Segoe UI", 9.5F),
         };
 
         form.Shown += (_, _) => Win11.ApplyChrome(form, light);
 
         var iconImage = TrayArt.SpeakerBitmap(56);
-        form.FormClosed += (_, _) => iconImage.Dispose();
+        form.FormClosed += (_, _) =>
+        {
+            iconImage.Dispose();
+            foreach (var font in fonts) font.Dispose();
+        };
 
         var shell = new TableLayoutPanel
         {
@@ -64,28 +79,28 @@ static class AboutDialog
         body.Controls.Add(new Label
         {
             AutoSize = true,
-            Font = new Font("Segoe UI Semibold", 13F),
+            Font = MakeFont("Segoe UI Semibold", 13F),
             Text = AppMetadata.ProductName,
             Margin = new Padding(0, 0, 0, 4),
         });
         body.Controls.Add(new Label
         {
             AutoSize = true,
-            Font = new Font("Segoe UI", 9.5F),
+            Font = MakeFont("Segoe UI", 9.5F),
             Text = "Version " + AppMetadata.VersionText,
             Margin = new Padding(0, 0, 0, 12),
         });
         body.Controls.Add(new Label
         {
             AutoSize = true,
-            Font = new Font("Segoe UI", 9.5F),
+            Font = MakeFont("Segoe UI", 9.5F),
             MaximumSize = new Size(340, 0),
             Text = AppMetadata.Description,
             Margin = new Padding(0, 0, 0, 12),
         });
-        body.Controls.Add(InfoLine("Publisher", AppMetadata.Company));
-        body.Controls.Add(InfoLine("Copyright", AppMetadata.Copyright));
-        body.Controls.Add(InfoLine("Settings", SettingsStore.SettingsPath));
+        body.Controls.Add(InfoLine("Publisher", AppMetadata.Company, MakeFont));
+        body.Controls.Add(InfoLine("Copyright", AppMetadata.Copyright, MakeFont));
+        body.Controls.Add(InfoLine("Settings", SettingsStore.SettingsPath, MakeFont));
 
         string notice = AppMetadata.MissingMetadataNotice;
         if (notice.Length > 0)
@@ -93,7 +108,7 @@ static class AboutDialog
             body.Controls.Add(new Label
             {
                 AutoSize = true,
-                Font = new Font("Segoe UI", 9F),
+                Font = MakeFont("Segoe UI", 9F),
                 MaximumSize = new Size(340, 0),
                 ForeColor = Theme.Warning(light),
                 Text = notice,
@@ -122,10 +137,10 @@ static class AboutDialog
         else form.ShowDialog(owner);
     }
 
-    static Label InfoLine(string label, string value) => new()
+    static Label InfoLine(string label, string value, Func<string, float, Font> makeFont) => new()
     {
         AutoSize = true,
-        Font = new Font("Segoe UI", 9F),
+        Font = makeFont("Segoe UI", 9F),
         MaximumSize = new Size(340, 0),
         Text = $"{label}: {ValueOrFallback(value)}",
         Margin = new Padding(0, 0, 0, 4),

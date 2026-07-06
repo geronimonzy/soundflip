@@ -23,6 +23,15 @@ public sealed class CommandLineTests
     }
 
     [Fact]
+    public void Parse_Set_NoDeviceName_YieldsSetWithNullQuery()
+    {
+        var command = CommandLine.Parse(["set"], @"C:\work");
+
+        Assert.Equal(Command.Set, command.Kind);
+        Assert.True(string.IsNullOrEmpty(command.DeviceQuery));
+    }
+
+    [Fact]
     public void Parse_Set_InputKind_ConsumesKindWord()
     {
         var command = CommandLine.Parse(["set", "input", "Yeti", "Mic"], @"C:\work");

@@ -16,6 +16,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Guards against a tag pushed without bumping <Version> in soundflip.csproj
+      # (or vice versa) — the zip/release name comes from the tag while the
+      # exe/MSIX version comes from the csproj, so they must agree.
+      - name: Verify tag matches csproj version
+        shell: pwsh
+        run: |
+          [xml]$proj = Get-Content .\soundflip.csproj
+          $versions = @($proj.Project.PropertyGroup.Version | Where-Object { $_ })
+          if ($versions.Count -eq 0) { throw "Could not read <Version> from soundflip.csproj" }
+          if ($versions.Count -gt 1) { throw "Found multiple <Version> elements in soundflip.csproj — expected exactly one" }
+          $csprojVersion = $versions[0]
+
+          $tag = '${{ github.ref_name }}'
+          $tagVersion = $tag -replace '^v', ''
+
+          if ($tagVersion -ne $csprojVersion) {
+            Write-Error "Tag '$tag' (version $tagVersion) does not match soundflip.csproj <Version>$csprojVersion</Version>"
+            exit 1
+          }
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

@@ -74,16 +74,31 @@ static class HotKey
         uint vk = 0;
         bool sawKey = false;
 
-        foreach (var rawPart in spec.Split('+', StringSplitOptions.RemoveEmptyEntries))
+        // Split without RemoveEmptyEntries so malformed specs with empty tokens
+        // ("ctrl++a", "+ctrl+a", trailing "ctrl+a+") fail instead of being
+        // silently normalized.
+        foreach (var rawPart in spec.Split('+'))
         {
             var part = rawPart.Trim().ToLowerInvariant();
             switch (part)
             {
                 case "ctrl":
-                case "control": mods |= MOD_CONTROL; break;
-                case "alt": mods |= MOD_ALT; break;
-                case "shift": mods |= MOD_SHIFT; break;
-                case "win": mods |= MOD_WIN; break;
+                case "control":
+                    if ((mods & MOD_CONTROL) != 0) return false;
+                    mods |= MOD_CONTROL;
+                    break;
+                case "alt":
+                    if ((mods & MOD_ALT) != 0) return false;
+                    mods |= MOD_ALT;
+                    break;
+                case "shift":
+                    if ((mods & MOD_SHIFT) != 0) return false;
+                    mods |= MOD_SHIFT;
+                    break;
+                case "win":
+                    if ((mods & MOD_WIN) != 0) return false;
+                    mods |= MOD_WIN;
+                    break;
                 default:
                     if (sawKey || !TryKey(part, out vk)) return false;
                     sawKey = true;
@@ -156,7 +171,17 @@ static class HotKey
             return false;
         }
 
-        if (key.Length is 2 or 3 && key[0] == 'f' && int.TryParse(key[1..], out int number) && number is >= 1 and <= 12)
+        // Numpad digits are distinct from the top-row digits so the pressed key is
+        // the one that actually gets registered (VK_NUMPAD0..VK_NUMPAD9).
+        if (key.Length == 4 && key.StartsWith("num") && key[3] is >= '0' and <= '9')
+        {
+            vk = (uint)(0x60 + (key[3] - '0'));
+            return true;
+        }
+
+        // Only canonical f1..f12 — reject zero-padded forms like "f01".
+        if (key.Length is 2 or 3 && key[0] == 'f' && key[1] != '0'
+            && int.TryParse(key[1..], out int number) && number is >= 1 and <= 12)
         {
             vk = (uint)(0x70 + (number - 1));
             return true;
@@ -169,7 +194,7 @@ static class HotKey
     {
         >= Keys.A and <= Keys.Z => char.ToLowerInvariant((char)key).ToString(),
         >= Keys.D0 and <= Keys.D9 => ((char)('0' + (key - Keys.D0))).ToString(),
-        >= Keys.NumPad0 and <= Keys.NumPad9 => ((char)('0' + (key - Keys.NumPad0))).ToString(),
+        >= Keys.NumPad0 and <= Keys.NumPad9 => "num" + (key - Keys.NumPad0),
         >= Keys.F1 and <= Keys.F12 => "f" + (key - Keys.F1 + 1),
         _ => null,
     };

@@ -96,9 +96,18 @@ static class RunKey
         {
             using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(KeyPath);
             MigrateLegacyValue(key);
-            return key.GetValue(ValueName) is string
-                ? AutoStartStatus.EnabledStatus()
-                : AutoStartStatus.Disabled("Enable startup from the tray menu.");
+
+            if (key.GetValue(ValueName) is not string existing)
+                return AutoStartStatus.Disabled("Enable startup from the tray menu.");
+
+            // Portable installs move the exe between versions/locations, so a Run value
+            // that no longer matches the current exe would silently stop autostarting;
+            // self-heal it in place instead of reporting a stale "enabled" status.
+            if (Environment.ProcessPath is string exe &&
+                !string.Equals(existing, QuotedPath(exe), StringComparison.OrdinalIgnoreCase))
+                key.SetValue(ValueName, QuotedPath(exe));
+
+            return AutoStartStatus.EnabledStatus();
         }
         catch (Exception ex)
         {
@@ -114,9 +123,11 @@ static class RunKey
         if (key.GetValue(LegacyValueName) is not string) return;
 
         if (key.GetValue(ValueName) is not string && Environment.ProcessPath is string exe)
-            key.SetValue(ValueName, $"\"{exe}\"");
+            key.SetValue(ValueName, QuotedPath(exe));
         key.DeleteValue(LegacyValueName, throwOnMissingValue: false);
     }
+
+    static string QuotedPath(string exe) => $"\"{exe}\"";
 
     public static AutoStartStatus SetEnabled(bool enabled)
     {
@@ -128,7 +139,7 @@ static class RunKey
                 string? exe = Environment.ProcessPath;
                 if (string.IsNullOrWhiteSpace(exe))
                     return AutoStartStatus.Error("Could not determine the path of the running executable.");
-                key.SetValue(ValueName, $"\"{exe}\"");
+                key.SetValue(ValueName, QuotedPath(exe));
             }
             else
             {

@@ -82,6 +82,36 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void Load_MalformedJson_ThrowsJsonException()
+    {
+        using var temp = new TempDirectory();
+        string path = System.IO.Path.Combine(temp.Path, "soundflip.json");
+        System.IO.File.WriteAllText(path, "{ not json");
+
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => SettingsStore.Load(path));
+    }
+
+    [Fact]
+    public void Save_IsAtomic_LeavesNoTempFileAndRoundTrips()
+    {
+        using var temp = new TempDirectory();
+        string path = System.IO.Path.Combine(temp.Path, "soundflip.json");
+        var expected = new AppSettings
+        {
+            Outputs = { new DeviceEntry { Match = "Speakers" } },
+            CycleOutputs = "ctrl+alt+9",
+        };
+
+        SettingsStore.Save(expected, path);
+
+        Assert.False(System.IO.File.Exists(path + ".tmp"), "atomic save must not leave a .tmp file");
+        var actual = SettingsStore.Load(path);
+        Assert.Single(actual.Outputs);
+        Assert.Equal("Speakers", actual.Outputs[0].Match);
+        Assert.Equal("ctrl+alt+9", actual.CycleOutputs);
+    }
+
+    [Fact]
     public void Load_MissingFile_ReturnsDefaults()
     {
         using var temp = new TempDirectory();

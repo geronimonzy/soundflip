@@ -18,8 +18,10 @@ $ErrorActionPreference = "Stop"
 # 4-part MSIX version from the csproj <Version> (the Store requires it to
 # strictly increase between submissions).
 [xml]$proj = Get-Content .\soundflip.csproj
-$version = ($proj.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
-if (-not $version) { throw "Could not read <Version> from soundflip.csproj" }
+$versions = @($proj.Project.PropertyGroup.Version | Where-Object { $_ })
+if ($versions.Count -eq 0) { throw "Could not read <Version> from soundflip.csproj" }
+if ($versions.Count -gt 1) { throw "Found multiple <Version> elements in soundflip.csproj — expected exactly one" }
+$version = $versions[0]
 $msixVersion = "$version.0"
 
 # Store packages must NOT be single-file: MSIX updates are differential per

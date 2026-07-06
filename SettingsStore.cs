@@ -73,7 +73,11 @@ static class SettingsStore
     {
         string? directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
-        File.WriteAllText(path, Serialize(settings));
+
+        // Write-then-rename so a crash mid-write can't leave a truncated/corrupt file.
+        string tmp = path + ".tmp";
+        File.WriteAllText(tmp, Serialize(settings));
+        File.Move(tmp, path, overwrite: true);
     }
 
     internal static AppSettings Deserialize(string json)

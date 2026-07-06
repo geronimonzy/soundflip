@@ -11,6 +11,7 @@ sealed class TrayContext : ApplicationContext
     readonly HotkeyManager _hotkeys = new();
     ToastForm? _toast;
     AutoStartStatus _autoStart = AutoStartStatus.Loading;
+    bool? _rendererLight;
 
     public TrayContext(AppSettings settings)
     {
@@ -57,7 +58,7 @@ sealed class TrayContext : ApplicationContext
     async Task RefreshAutoStartStatusAsync(bool rebuildMenu)
     {
         _autoStart = await AutoStart.GetStatusAsync();
-        if (rebuildMenu) BuildMenu();
+        if (rebuildMenu && !_icon.ContextMenuStrip!.Visible) BuildMenu();
     }
 
     void BuildMenu()
@@ -65,9 +66,16 @@ sealed class TrayContext : ApplicationContext
         var menu = _icon.ContextMenuStrip!;
 
         bool light = Theme.IsLight;
-        ToolStripManager.Renderer = new ModernMenuRenderer(light);
+        if (_rendererLight != light)
+        {
+            ToolStripManager.Renderer = new ModernMenuRenderer(light);
+            _rendererLight = light;
+        }
         menu.BackColor = Theme.Back(light);
         menu.ForeColor = Theme.Fore(light);
+
+        var oldItems = menu.Items.Cast<ToolStripItem>().ToArray();
+        foreach (var item in oldItems) item.Dispose();
         menu.Items.Clear();
 
         string currentOutput = Audio.CurrentDefault(_controller, AudioKind.Output)?.FullName ?? "No default output";
@@ -176,18 +184,36 @@ sealed class TrayContext : ApplicationContext
     {
         bool enable = !_autoStart.Enabled;
         _autoStart = AutoStartStatus.Loading;
-        BuildMenu();
+        if (!_icon.ContextMenuStrip!.Visible) BuildMenu();
 
-        var status = await AutoStart.SetEnabledAsync(enable);
-        _autoStart = status;
-        BuildMenu();
+        try
+        {
+            var status = await AutoStart.SetEnabledAsync(enable);
+            _autoStart = status;
+            if (!_icon.ContextMenuStrip!.Visible) BuildMenu();
 
-        if (enable && status.Enabled)
-            Notify("Start with Windows enabled", $"{AppMetadata.ProductName} will start when you sign in.", ToolTipIcon.Info);
-        else if (!enable && !status.Enabled && status.CanToggle)
-            Notify("Start with Windows disabled", $"{AppMetadata.ProductName} will no longer start automatically.", ToolTipIcon.Info);
-        else
-            Notify("Autostart unavailable", status.Detail, ToolTipIcon.Warning);
+            if (enable && status.Enabled)
+                Notify("Start with Windows enabled", $"{AppMetadata.ProductName} will start when you sign in.", ToolTipIcon.Info);
+            else if (!enable && !status.Enabled && status.CanToggle)
+                Notify("Start with Windows disabled", $"{AppMetadata.ProductName} will no longer start automatically.", ToolTipIcon.Info);
+            else
+                Notify("Autostart unavailable", status.Detail, ToolTipIcon.Warning);
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                _autoStart = await AutoStart.GetStatusAsync();
+            }
+            catch
+            {
+                _autoStart = AutoStartStatus.Error("Startup status is unavailable.");
+            }
+
+            Notify("Autostart unavailable", ex.Message, ToolTipIcon.Warning);
+            if (!_icon.ContextMenuStrip!.Visible) BuildMenu();
+            return;
+        }
     }
 
     // --- Switch actions ---
@@ -239,6 +265,7 @@ sealed class TrayContext : ApplicationContext
         oldToast?.Close();
 
         var toast = new ToastForm(message, foreground, Theme.Back(light));
+        toast.FormClosed += (_, _) => { if (ReferenceEquals(_toast, toast)) _toast = null; };
         _toast = toast;
         toast.Show();
     }
@@ -255,7 +282,9 @@ sealed class TrayContext : ApplicationContext
         {
             _toast?.Close();
             _hotkeys.Dispose();
+            var icon = _icon.Icon;
             _icon.Dispose();
+            icon?.Dispose();
             _controller.Dispose();
         }
 
@@ -267,5 +296,5 @@ sealed class TrayContext : ApplicationContext
     static string CycleLabel(string label, string hotkey) =>
         string.IsNullOrWhiteSpace(hotkey) ? label : $"{label}  ({hotkey})";
 
-    static string Truncate(string text, int max) => text.Length <= max ? text : text[..(max - 1)] + "...";
+    static string Truncate(string text, int max) => text.Length <= max ? text : text[..(max - 3)] + "...";
 }

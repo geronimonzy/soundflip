@@ -47,7 +47,7 @@ internal static class Program
     {
         using var controller = new CoreAudioController();
         var current = Audio.CurrentDefault(controller, kind);
-        foreach (var device in Audio.Devices(controller, kind).OrderBy(d => d.FullName))
+        foreach (var device in Audio.Devices(controller, kind).OrderBy(d => d.FullName, StringComparer.OrdinalIgnoreCase))
             Console.WriteLine($"{(current != null && device.Id == current.Id ? "* " : "  ")}{device.FullName}");
         return 0;
     }
@@ -111,31 +111,38 @@ internal static class Program
 
     static int RunTrayApp()
     {
-        var settings = SettingsStore.Load();
+        // Main is already [STAThread], so run the UI on it directly. The
+        // Application setup calls must precede any window — including the
+        // settings-failure MessageBox below, which WinForms would otherwise
+        // count as the first window and reject the setup afterwards.
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        Application.SetHighDpiMode(HighDpiMode.SystemAware);
 
-        Exception? failure = null;
-        var thread = new Thread(() =>
+        // A corrupt settings file must not stop the tray from launching: fall
+        // back to defaults and warn, rather than crashing before any UI exists.
+        AppSettings settings;
+        try
         {
-            try
-            {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-                Application.SetHighDpiMode(HighDpiMode.SystemAware);
-                Application.Run(new TrayContext(settings));
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-                MessageBox.Show(ex.Message, AppMetadata.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        });
+            settings = SettingsStore.Load();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Your settings could not be read, so defaults are being used.\n\n{ex.Message}",
+                AppMetadata.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            settings = new AppSettings();
+        }
 
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-            throw new InvalidOperationException("tray app failed", failure);
+        try
+        {
+            Application.Run(new TrayContext(settings));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, AppMetadata.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return 1;
+        }
 
         return 0;
     }

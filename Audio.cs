@@ -50,6 +50,9 @@ static class Audio
             .Select(match => Resolve(controller, kind, match))
             .Where(device => device is not null)
             .Select(device => device!)
+            // Two ring entries can resolve to the same device; collapse them (first
+            // occurrence wins) so the cycle never degenerates into a no-op.
+            .DistinctBy(device => device.Id)
             .ToList();
 
         if (resolved.Count == 0) return null;

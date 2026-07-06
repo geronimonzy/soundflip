@@ -227,10 +227,12 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
         if (!e.Item.Selected || !e.Item.Enabled) return;
 
         var bounds = new Rectangle(4, 1, e.Item.Width - 8, e.Item.Height - 2);
+        var oldSmoothing = e.Graphics.SmoothingMode;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         using var brush = new SolidBrush(Theme.Hover(_light));
         using var path = Gfx.Round(bounds, 6);
         e.Graphics.FillPath(brush, path);
+        e.Graphics.SmoothingMode = oldSmoothing;
     }
 
     protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
@@ -249,6 +251,7 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
 
     protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
     {
+        var oldSmoothing = e.Graphics.SmoothingMode;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         var bounds = e.ImageRectangle;
         using var pen = new Pen(Theme.Fore(_light), 1.6F) { StartCap = LineCap.Round, EndCap = LineCap.Round };
@@ -260,6 +263,7 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
             new PointF(x + bounds.Width * 0.22F, y + bounds.Height * 0.22F),
             new PointF(x + bounds.Width * 0.62F, y - bounds.Height * 0.30F),
         });
+        e.Graphics.SmoothingMode = oldSmoothing;
     }
 
     sealed class ModernColors : ProfessionalColorTable
@@ -286,6 +290,11 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
 // screen. It uses a layered window for smooth corners and translucency.
 sealed class ToastForm : Form
 {
+    // Shared across every toast for the app's lifetime: WinForms never disposes a
+    // Font assigned to a control, so a per-instance Font here would leak GDI
+    // handles on every notification.
+    static readonly Font ToastFont = new("Segoe UI", 10.5F);
+
     readonly System.Windows.Forms.Timer _life = new() { Interval = 1800 };
     readonly string _message;
     readonly Color _foreground;
@@ -306,7 +315,7 @@ sealed class ToastForm : Form
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
-        Font = new Font("Segoe UI", 10.5F);
+        Font = ToastFont;
 
         // Measure with the same GDI+ engine and StringFormat used for drawing.
         // GDI (TextRenderer) wraps at different points than GDI+ (DrawString), so

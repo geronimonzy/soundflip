@@ -11,7 +11,7 @@ apps (Teams, Discord, Zoom, ...) follow the switch, mic included.
 </p>
 
 <p align="center">
-  <a href="https://apps.microsoft.com/detail/9NZ9F23HXFSB?mode=direct">
+  <a href="https://apps.microsoft.com/detail/9nz9f23hxfsb">
     <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200"
          alt="Get SoundFlip from the Microsoft Store">
   </a>

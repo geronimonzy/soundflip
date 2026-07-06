@@ -35,7 +35,7 @@ internal static class CommandLine
             "cycle" => new ParsedCommand(Command.Cycle, Scope: ParseScope(Token(args, 1))),
             "export-assets" => new ParsedCommand(Command.ExportAssets, TargetDirectory: ResolveAssetDirectory(args, currentDirectory)),
             "help" or "/?" or "-?" or "--help" => new ParsedCommand(Command.Help),
-            _ => new ParsedCommand(Command.Unknown, BadCommand: args[0]),
+            _ => new ParsedCommand(Command.Unknown, BadCommand: args[0] ?? string.Empty),
         };
     }
 
@@ -63,6 +63,8 @@ internal static class CommandLine
           soundflip list [outputs|inputs]  list active devices (* = current default)
           soundflip set [output|input] <name>
                                            set the default device (substring match)
+                                           (a device named "output"/"input" needs the
+                                           kind too, e.g. set output output)
           soundflip cycle [outputs|inputs] advance the chosen ring to its next device
           soundflip daemon                 alias for launching the tray app
           soundflip export-assets <dir>    generate default Microsoft Store logo assets
