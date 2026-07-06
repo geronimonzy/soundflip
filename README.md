@@ -21,9 +21,6 @@ Prefer a plain download? Grab the zip from the
 [latest release](https://github.com/geronimonzy/soundflip/releases/latest) —
 a single self-contained exe, nothing to install.
 
-> SoundFlip was previously called **audsw**. Settings and autostart entries
-> from audsw installs are migrated automatically on first launch.
-
 ## Commands
 
 ```
