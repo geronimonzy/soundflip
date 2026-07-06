@@ -111,6 +111,12 @@ internal static class Program
 
     static int RunTrayApp()
     {
+        // One tray instance per user session: a second double-click would only
+        // add a duplicate tray icon whose hotkeys all fail to register. The
+        // mutex is held for the app's lifetime and released on exit.
+        using var instance = new Mutex(initiallyOwned: true, @"Local\SoundFlip.Tray", out bool createdNew);
+        if (!createdNew) return 0;
+
         // Main is already [STAThread], so run the UI on it directly. The
         // Application setup calls must precede any window — including the
         // settings-failure MessageBox below, which WinForms would otherwise

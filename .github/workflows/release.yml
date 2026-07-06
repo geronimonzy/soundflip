@@ -120,3 +120,27 @@ jobs:
             ${{ steps.package.outputs.asset_path }}
             ${{ steps.package.outputs.checksum_path }}
           generate_release_notes: true
+
+      # Submit the unsigned MSIX to the Microsoft Store (product 9NZ9F23HXFSB).
+      # Runs after the GitHub release so a Store API failure never blocks the
+      # zip release; certification takes hours-to-days before the update is
+      # live. Requires the four Partner Center secrets; free apps only.
+      - name: Install Microsoft Store CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Configure Store credentials
+        shell: pwsh
+        run: |
+          msstore reconfigure `
+            --tenantId ${{ secrets.AZURE_AD_TENANT_ID }} `
+            --sellerId ${{ secrets.SELLER_ID }} `
+            --clientId ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }} `
+            --clientSecret ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+
+      - name: Publish to Microsoft Store
+        shell: pwsh
+        run: |
+          $msix = @(Get-ChildItem dist-msix\*.msix)
+          if ($msix.Count -ne 1) { throw "Expected exactly one MSIX in dist-msix, found $($msix.Count)" }
+          msstore publish $msix[0].FullName -id 9NZ9F23HXFSB
+          if ($LASTEXITCODE -ne 0) { Write-Error "msstore publish failed"; exit 1 }
