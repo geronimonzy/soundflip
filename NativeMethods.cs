@@ -27,4 +27,9 @@ static class NativeMethods
 
     [DllImport("user32.dll")]
     internal static extern bool DestroyIcon(IntPtr hIcon);
+
+    // Windows display language as a LANGID; the primary language lives in the
+    // low 10 bits. Used instead of CultureInfo because InvariantGlobalization is on.
+    [DllImport("kernel32.dll")]
+    internal static extern ushort GetUserDefaultUILanguage();
 }

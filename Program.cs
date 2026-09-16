@@ -131,11 +131,13 @@ internal static class Program
         try
         {
             settings = SettingsStore.Load();
+            Loc.Apply(settings.Language);
         }
         catch (Exception ex)
         {
+            Loc.Apply(Loc.Auto);
             MessageBox.Show(
-                $"Your settings could not be read, so defaults are being used.\n\n{ex.Message}",
+                Str.SettingsUnreadable.T(ex.Message),
                 AppMetadata.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             settings = new AppSettings();
         }

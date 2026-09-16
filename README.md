@@ -60,6 +60,8 @@ it for everything:
   `Ctrl+Alt+O` for outputs; combos are any modifiers plus a letter, digit, or
   F-key. If another app already owns a combo, SoundFlip warns you once and
   keeps the rest working.
+- **Language** — follows your Windows display language by default (English,
+  German, Spanish, French, Russian); pick one explicitly here if you prefer.
 - **Start with Windows** — SoundFlip starts silently in the tray every time
   you sign in. Toggle it off the same way.
 - **About SoundFlip** — version and links.
@@ -67,7 +69,8 @@ it for everything:
 
 Double-clicking the icon cycles the output ring. Every switch shows a small
 toast with the new device name, and the icon tooltip always shows the current
-output. The menu, dialogs, and toasts follow your Windows light/dark theme.
+output. The menu, dialogs, and toasts follow your Windows light/dark theme
+and display language.
 
 <p align="center">
   <img src="screenshots/hotkeys.png" width="48%" alt="Hotkeys window">

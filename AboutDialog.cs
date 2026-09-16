@@ -20,7 +20,7 @@ static class AboutDialog
 
         using var form = new Form
         {
-            Text = $"About {AppMetadata.ProductName}",
+            Text = Str.About.T(AppMetadata.ProductName),
             FormBorderStyle = FormBorderStyle.FixedDialog,
             StartPosition = FormStartPosition.CenterScreen,
             MaximizeBox = false,
@@ -87,7 +87,7 @@ static class AboutDialog
         {
             AutoSize = true,
             Font = MakeFont("Segoe UI", 9.5F),
-            Text = "Version " + AppMetadata.VersionText,
+            Text = Str.AboutVersion.T(AppMetadata.VersionText),
             Margin = new Padding(0, 0, 0, 12),
         });
         body.Controls.Add(new Label
@@ -95,12 +95,12 @@ static class AboutDialog
             AutoSize = true,
             Font = MakeFont("Segoe UI", 9.5F),
             MaximumSize = new Size(340, 0),
-            Text = AppMetadata.Description,
+            Text = Str.AppDescription.T(),
             Margin = new Padding(0, 0, 0, 12),
         });
-        body.Controls.Add(InfoLine("Publisher", AppMetadata.Company, MakeFont));
-        body.Controls.Add(InfoLine("Copyright", AppMetadata.Copyright, MakeFont));
-        body.Controls.Add(InfoLine("Settings", SettingsStore.SettingsPath, MakeFont));
+        body.Controls.Add(InfoLine(Str.Publisher.T(), AppMetadata.Company, MakeFont));
+        body.Controls.Add(InfoLine(Str.Copyright.T(), AppMetadata.Copyright, MakeFont));
+        body.Controls.Add(InfoLine(Str.Settings.T(), SettingsStore.SettingsPath, MakeFont));
 
         string notice = AppMetadata.MissingMetadataNotice;
         if (notice.Length > 0)
@@ -119,12 +119,12 @@ static class AboutDialog
         header.Controls.Add(iconBox, 0, 0);
         header.Controls.Add(body, 1, 0);
 
-        var close = new Win11Button(light) { Text = "Close", Accent = true, DialogResult = DialogResult.OK };
+        var close = new Win11Button(light) { Text = Str.Close.T(), Accent = true, DialogResult = DialogResult.OK };
         var footer = DialogFooter.Create(
             light,
             close,
-            ActionButton("Support", AppMetadata.SupportUrl, owner, light),
-            ActionButton("Homepage", AppMetadata.HomepageUrl, owner, light));
+            ActionButton(Str.Support.T(), AppMetadata.SupportUrl, owner, light),
+            ActionButton(Str.Homepage.T(), AppMetadata.HomepageUrl, owner, light));
 
         shell.Controls.Add(header, 0, 0);
         form.Controls.Add(shell);
@@ -172,5 +172,5 @@ static class AboutDialog
         return button;
     }
 
-    static string ValueOrFallback(string value) => string.IsNullOrWhiteSpace(value) ? "Not configured" : value;
+    static string ValueOrFallback(string value) => string.IsNullOrWhiteSpace(value) ? Str.NotConfigured.T() : value;
 }

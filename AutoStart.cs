@@ -1,24 +1,23 @@
 using Windows.ApplicationModel;
 
-sealed record AutoStartStatus(bool Enabled, bool CanToggle, string Detail)
+// Detail is kept as a catalog key (plus an optional raw suffix such as an
+// exception message) and rendered on demand, so the text follows a language
+// change made in the tray without rebuilding the status.
+sealed record AutoStartStatus(bool Enabled, bool CanToggle, Str DetailKey, string Extra = "")
 {
-    public static readonly AutoStartStatus Loading = new(false, false, "Checking startup support...");
+    public string Detail => DetailKey.T(Extra.Length > 0 ? Extra : AppMetadata.ProductName);
 
-    public static AutoStartStatus Unsupported(string detail) => new(false, false, detail);
+    public static readonly AutoStartStatus Loading = new(false, false, Str.StartupChecking);
 
-    public static AutoStartStatus Disabled(string detail = "Enable startup from the tray menu or Windows Startup Apps.") =>
-        new(false, true, detail);
+    public static AutoStartStatus Disabled(Str detail = Str.StartupEnableHint) => new(false, true, detail);
 
-    public static AutoStartStatus EnabledStatus(string detail = "SoundFlip will start when you sign in.") =>
-        new(true, true, detail);
+    public static AutoStartStatus EnabledStatus() => new(true, true, Str.AutostartEnabledText);
 
-    public static AutoStartStatus DisabledByUser(string detail = "Startup was disabled by the user. Re-enable it from Windows Startup Apps.") =>
-        new(false, false, detail);
+    public static AutoStartStatus DisabledByUser() => new(false, false, Str.StartupDisabledByUser);
 
-    public static AutoStartStatus DisabledByPolicy(string detail = "Startup is disabled by system policy on this device.") =>
-        new(false, false, detail);
+    public static AutoStartStatus DisabledByPolicy() => new(false, false, Str.StartupDisabledByPolicy);
 
-    public static AutoStartStatus Error(string detail) => new(false, false, detail);
+    public static AutoStartStatus Error(Str detail, string extra = "") => new(false, false, detail, extra);
 }
 
 // Packaged (Store/MSIX) builds go through the Windows StartupTask model so the
@@ -41,7 +40,7 @@ static class AutoStart
         }
         catch (Exception ex)
         {
-            return AutoStartStatus.Error("Startup task is unavailable: " + ex.Message);
+            return AutoStartStatus.Error(Str.StartupTaskUnavailable, ex.Message);
         }
     }
 
@@ -69,7 +68,7 @@ static class AutoStart
         }
         catch (Exception ex)
         {
-            return AutoStartStatus.Error("Startup task is unavailable: " + ex.Message);
+            return AutoStartStatus.Error(Str.StartupTaskUnavailable, ex.Message);
         }
     }
 
@@ -79,7 +78,7 @@ static class AutoStart
         StartupTaskState.Disabled => AutoStartStatus.Disabled(),
         StartupTaskState.DisabledByUser => AutoStartStatus.DisabledByUser(),
         StartupTaskState.DisabledByPolicy => AutoStartStatus.DisabledByPolicy(),
-        _ => AutoStartStatus.Error("Startup state could not be determined."),
+        _ => AutoStartStatus.Error(Str.StartupStateUnknown),
     };
 }
 
@@ -98,7 +97,7 @@ static class RunKey
             MigrateLegacyValue(key);
 
             if (key.GetValue(ValueName) is not string existing)
-                return AutoStartStatus.Disabled("Enable startup from the tray menu.");
+                return AutoStartStatus.Disabled(Str.StartupEnableFromTray);
 
             // Portable installs move the exe between versions/locations, so a Run value
             // that no longer matches the current exe would silently stop autostarting;
@@ -111,7 +110,7 @@ static class RunKey
         }
         catch (Exception ex)
         {
-            return AutoStartStatus.Error("Startup registry entry is unavailable: " + ex.Message);
+            return AutoStartStatus.Error(Str.StartupRegistryUnavailable, ex.Message);
         }
     }
 
@@ -138,7 +137,7 @@ static class RunKey
             {
                 string? exe = Environment.ProcessPath;
                 if (string.IsNullOrWhiteSpace(exe))
-                    return AutoStartStatus.Error("Could not determine the path of the running executable.");
+                    return AutoStartStatus.Error(Str.ExePathUnknown);
                 key.SetValue(ValueName, QuotedPath(exe));
             }
             else
@@ -150,7 +149,7 @@ static class RunKey
         }
         catch (Exception ex)
         {
-            return AutoStartStatus.Error("Startup registry entry is unavailable: " + ex.Message);
+            return AutoStartStatus.Error(Str.StartupRegistryUnavailable, ex.Message);
         }
     }
 }

@@ -208,7 +208,7 @@ static class HotkeyDialog
 
         using var form = new Form
         {
-            Text = "Set hotkey",
+            Text = Str.SetHotkeyTitle.T(),
             FormBorderStyle = FormBorderStyle.FixedDialog,
             StartPosition = FormStartPosition.CenterScreen,
             MinimizeBox = false,
@@ -239,7 +239,7 @@ static class HotkeyDialog
         {
             AutoSize = true,
             Font = new Font("Segoe UI Semibold", 12F),
-            Text = "Press a new shortcut",
+            Text = Str.PressNewShortcut.T(),
             Margin = new Padding(0, 0, 0, 8),
         };
 
@@ -247,7 +247,7 @@ static class HotkeyDialog
         {
             AutoSize = true,
             Font = new Font("Segoe UI", 10F),
-            Text = $"Current: {current}",
+            Text = Str.CurrentHotkey.T(current),
             Margin = new Padding(0, 0, 0, 8),
         };
 
@@ -255,7 +255,7 @@ static class HotkeyDialog
         {
             AutoSize = true,
             Font = new Font("Segoe UI", 9.5F),
-            Text = "Use Ctrl, Alt, Shift, or Win together with a letter, digit, or F1-F12. Press Esc to cancel.",
+            Text = Str.HotkeyHint.T(),
             MaximumSize = new Size(380, 0),
             Margin = new Padding(0, 0, 0, 12),
         };
@@ -264,12 +264,12 @@ static class HotkeyDialog
         {
             AutoSize = true,
             Font = new Font("Segoe UI", 9.5F),
-            Text = "Waiting for a valid shortcut...",
+            Text = Str.WaitingForShortcut.T(),
             ForeColor = Theme.Fore(light),
             Margin = new Padding(0, 6, 0, 0),
         };
 
-        var cancel = new Win11Button(light) { Text = "Cancel", DialogResult = DialogResult.Cancel };
+        var cancel = new Win11Button(light) { Text = Str.Cancel.T(), DialogResult = DialogResult.Cancel };
 
         root.Controls.Add(title, 0, 0);
         root.Controls.Add(currentLabel, 0, 1);
@@ -299,7 +299,7 @@ static class HotkeyDialog
             if (spec is null)
             {
                 status.ForeColor = Theme.Warning(light);
-                status.Text = "Need a modifier plus a letter, digit, or F1-F12. Try again.";
+                status.Text = Str.NeedModifier.T();
                 return;
             }
 
@@ -340,7 +340,7 @@ static class HotkeysWindow
 
         using var form = new Form
         {
-            Text = "Hotkeys",
+            Text = Str.HotkeysTitle.T(),
             FormBorderStyle = FormBorderStyle.FixedDialog,
             StartPosition = FormStartPosition.CenterScreen,
             MinimizeBox = false,
@@ -369,11 +369,11 @@ static class HotkeysWindow
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 
-        AddRow(layout, 0, "Cycle outputs", light, () => cycleOutputs, value => cycleOutputs = value);
-        AddRow(layout, 1, "Cycle inputs", light, () => cycleInputs, value => cycleInputs = value);
+        AddRow(layout, 0, Str.CycleOutputs.T(), light, () => cycleOutputs, value => cycleOutputs = value);
+        AddRow(layout, 1, Str.CycleInputs.T(), light, () => cycleInputs, value => cycleInputs = value);
 
-        var save = new Win11Button(light) { Text = "Save", Accent = true, DialogResult = DialogResult.OK };
-        var cancel = new Win11Button(light) { Text = "Cancel", DialogResult = DialogResult.Cancel };
+        var save = new Win11Button(light) { Text = Str.Save.T(), Accent = true, DialogResult = DialogResult.OK };
+        var cancel = new Win11Button(light) { Text = Str.Cancel.T(), DialogResult = DialogResult.Cancel };
 
         form.Controls.Add(layout);
         form.Controls.Add(DialogFooter.Create(light, save, cancel));
@@ -421,7 +421,7 @@ static class HotkeysWindow
             if (picked is not null) { set(picked); pick.Text = Show(picked); }
         };
 
-        var clear = new Win11Button(light) { Text = "Clear", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, gap) };
+        var clear = new Win11Button(light) { Text = Str.Clear.T(), Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, gap) };
         clear.Click += (_, _) => { set(""); pick.Text = Show(""); };
 
         layout.Controls.Add(label, 0, row);
@@ -429,5 +429,5 @@ static class HotkeysWindow
         layout.Controls.Add(clear, 2, row);
     }
 
-    static string Show(string hotkey) => string.IsNullOrWhiteSpace(hotkey) ? "(none)" : hotkey;
+    static string Show(string hotkey) => string.IsNullOrWhiteSpace(hotkey) ? Str.None.T() : hotkey;
 }

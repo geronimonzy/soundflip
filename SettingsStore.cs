@@ -15,6 +15,10 @@ sealed class AppSettings
 
     public string CycleOutputs { get; set; } = "ctrl+alt+o";
     public string CycleInputs { get; set; } = "";
+
+    // UI language: "auto" follows the Windows display language, otherwise one of
+    // Loc.Supported ("en", "de", ...). Unknown values behave like "auto".
+    public string Language { get; set; } = Loc.Auto;
 }
 
 static class SettingsStore

@@ -50,8 +50,8 @@ sealed class TrayContext : ApplicationContext
         Bind(_settings.CycleInputs, CycleInputs);
 
         if (failed.Count > 0)
-            Notify("Some hotkeys are in use",
-                "Could not register: " + string.Join(", ", failed.Distinct()),
+            Notify(Str.HotkeysInUseTitle.T(),
+                Str.HotkeysInUseText.T(string.Join(", ", failed.Distinct())),
                 ToolTipIcon.Warning);
     }
 
@@ -78,25 +78,26 @@ sealed class TrayContext : ApplicationContext
         foreach (var item in oldItems) item.Dispose();
         menu.Items.Clear();
 
-        string currentOutput = Audio.CurrentDefault(_controller, AudioKind.Output)?.FullName ?? "No default output";
-        string currentInput = Audio.CurrentDefault(_controller, AudioKind.Input)?.FullName ?? "No default input";
+        string currentOutput = Audio.CurrentDefault(_controller, AudioKind.Output)?.FullName ?? Str.NoDefaultOutput.T();
+        string currentInput = Audio.CurrentDefault(_controller, AudioKind.Input)?.FullName ?? Str.NoDefaultInput.T();
 
-        menu.Items.Add(InfoItem("Output:  " + Truncate(currentOutput, 60)));
-        menu.Items.Add(InfoItem("Input:   " + Truncate(currentInput, 60)));
+        menu.Items.Add(InfoItem(Str.MenuOutputCurrent.T(Truncate(currentOutput, 60))));
+        menu.Items.Add(InfoItem(Str.MenuInputCurrent.T(Truncate(currentInput, 60))));
         menu.Items.Add(new ToolStripSeparator());
 
-        menu.Items.Add(new ToolStripMenuItem(CycleLabel("Cycle output", _settings.CycleOutputs), null, (_, _) => CycleOutputs()));
-        menu.Items.Add(new ToolStripMenuItem(CycleLabel("Cycle input", _settings.CycleInputs), null, (_, _) => CycleInputs()));
+        menu.Items.Add(new ToolStripMenuItem(CycleLabel(Str.CycleOutput.T(), _settings.CycleOutputs), null, (_, _) => CycleOutputs()));
+        menu.Items.Add(new ToolStripMenuItem(CycleLabel(Str.CycleInput.T(), _settings.CycleInputs), null, (_, _) => CycleInputs()));
         menu.Items.Add(new ToolStripSeparator());
 
-        menu.Items.Add(DeviceMenu("Output", AudioKind.Output));
-        menu.Items.Add(DeviceMenu("Input", AudioKind.Input));
+        menu.Items.Add(DeviceMenu(Str.Output.T(), AudioKind.Output));
+        menu.Items.Add(DeviceMenu(Str.Input.T(), AudioKind.Input));
         menu.Items.Add(new ToolStripSeparator());
 
-        menu.Items.Add(new ToolStripMenuItem("Hotkeys...", null, (_, _) => EditHotkeys()));
+        menu.Items.Add(new ToolStripMenuItem(Str.Hotkeys.T(), null, (_, _) => EditHotkeys()));
+        menu.Items.Add(LanguageMenu());
         menu.Items.Add(new ToolStripSeparator());
 
-        var autostart = new ToolStripMenuItem("Start with Windows", null, async (_, _) => await ToggleAutoStartAsync())
+        var autostart = new ToolStripMenuItem(Str.StartWithWindows.T(), null, async (_, _) => await ToggleAutoStartAsync())
         {
             Checked = _autoStart.Enabled,
             Enabled = _autoStart.CanToggle,
@@ -106,8 +107,41 @@ sealed class TrayContext : ApplicationContext
             menu.Items.Add(InfoItem(_autoStart.Detail));
 
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem($"About {AppMetadata.ProductName}", null, (_, _) => AboutDialog.Show()));
-        menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => ExitApp()));
+        menu.Items.Add(new ToolStripMenuItem(Str.About.T(AppMetadata.ProductName), null, (_, _) => AboutDialog.Show()));
+        menu.Items.Add(new ToolStripMenuItem(Str.Exit.T(), null, (_, _) => ExitApp()));
+    }
+
+    // Radio-style language picker. "System default" follows the Windows display
+    // language; a concrete choice is saved immediately and the menu, tooltip and
+    // any dialog opened afterwards use it. Language names are shown in their own
+    // language and never translated.
+    ToolStripMenuItem LanguageMenu()
+    {
+        var root = new ToolStripMenuItem(Str.Language.T());
+        root.DropDownOpened += (_, _) => Win11.RoundCorners(root.DropDown);
+
+        string selected = Loc.Normalize(_settings.Language);
+        void Add(string code, string label)
+        {
+            var item = new ToolStripMenuItem(label) { Checked = selected == code };
+            item.Click += (_, _) => SetLanguage(code);
+            root.DropDownItems.Add(item);
+        }
+
+        Add(Loc.Auto, Str.LanguageSystem.T());
+        root.DropDownItems.Add(new ToolStripSeparator());
+        foreach (var code in Loc.Supported) Add(code, Loc.NativeName(code));
+
+        return root;
+    }
+
+    void SetLanguage(string code)
+    {
+        _settings.Language = code;
+        SettingsStore.Save(_settings);
+        Loc.Apply(code);
+        UpdateTooltip();
+        if (!_icon.ContextMenuStrip!.Visible) BuildMenu();
     }
 
     // Live checklist of active devices of one kind: the check marks membership in
@@ -143,7 +177,7 @@ sealed class TrayContext : ApplicationContext
         }
 
         if (root.DropDownItems.Count == 0)
-            root.DropDownItems.Add(new ToolStripMenuItem("(no active devices)") { Enabled = false });
+            root.DropDownItems.Add(new ToolStripMenuItem(Str.NoActiveDevices.T()) { Enabled = false });
 
         return root;
     }
@@ -193,11 +227,11 @@ sealed class TrayContext : ApplicationContext
             if (!_icon.ContextMenuStrip!.Visible) BuildMenu();
 
             if (enable && status.Enabled)
-                Notify("Start with Windows enabled", $"{AppMetadata.ProductName} will start when you sign in.", ToolTipIcon.Info);
+                Notify(Str.AutostartEnabledTitle.T(), Str.AutostartEnabledText.T(AppMetadata.ProductName), ToolTipIcon.Info);
             else if (!enable && !status.Enabled && status.CanToggle)
-                Notify("Start with Windows disabled", $"{AppMetadata.ProductName} will no longer start automatically.", ToolTipIcon.Info);
+                Notify(Str.AutostartDisabledTitle.T(), Str.AutostartDisabledText.T(AppMetadata.ProductName), ToolTipIcon.Info);
             else
-                Notify("Autostart unavailable", status.Detail, ToolTipIcon.Warning);
+                Notify(Str.AutostartUnavailable.T(), status.Detail, ToolTipIcon.Warning);
         }
         catch (Exception ex)
         {
@@ -207,10 +241,10 @@ sealed class TrayContext : ApplicationContext
             }
             catch
             {
-                _autoStart = AutoStartStatus.Error("Startup status is unavailable.");
+                _autoStart = AutoStartStatus.Error(Str.StartupStatusUnavailable);
             }
 
-            Notify("Autostart unavailable", ex.Message, ToolTipIcon.Warning);
+            Notify(Str.AutostartUnavailable.T(), ex.Message, ToolTipIcon.Warning);
             if (!_icon.ContextMenuStrip!.Visible) BuildMenu();
             return;
         }
@@ -218,34 +252,35 @@ sealed class TrayContext : ApplicationContext
 
     // --- Switch actions ---
 
-    void CycleOutputs() => CycleRing(AudioKind.Output, "outputs");
-    void CycleInputs() => CycleRing(AudioKind.Input, "inputs");
+    void CycleOutputs() => CycleRing(AudioKind.Output);
+    void CycleInputs() => CycleRing(AudioKind.Input);
 
-    void CycleRing(AudioKind kind, string what)
+    void CycleRing(AudioKind kind)
     {
-        var ring = (kind == AudioKind.Output ? _settings.Outputs : _settings.Inputs)
+        bool output = kind == AudioKind.Output;
+        var ring = (output ? _settings.Outputs : _settings.Inputs)
             .Select(entry => entry.Match).ToList();
 
         if (ring.Count == 0)
         {
-            Notify("No " + what + " configured", "Tick devices to cycle in the tray menu.", ToolTipIcon.Warning);
+            Notify((output ? Str.NoOutputsConfigured : Str.NoInputsConfigured).T(), Str.TickDevicesHint.T(), ToolTipIcon.Warning);
             return;
         }
 
         var target = Audio.CycleRing(_controller, kind, ring);
         if (target is null)
         {
-            Notify("Nothing to switch to", "None of the configured " + what + " are currently active.", ToolTipIcon.Warning);
+            Notify(Str.NothingToSwitch.T(), (output ? Str.NoOutputsActive : Str.NoInputsActive).T(), ToolTipIcon.Warning);
             return;
         }
 
         UpdateTooltip();
-        Notify(kind == AudioKind.Output ? "Audio output" : "Audio input", target.FullName, ToolTipIcon.Info);
+        Notify((output ? Str.AudioOutput : Str.AudioInput).T(), target.FullName, ToolTipIcon.Info);
     }
 
     void UpdateTooltip()
     {
-        string current = Audio.CurrentDefault(_controller, AudioKind.Output)?.FullName ?? "unknown";
+        string current = Audio.CurrentDefault(_controller, AudioKind.Output)?.FullName ?? Str.Unknown.T();
         _icon.Text = Truncate(AppMetadata.ProductName + " - " + current, 63);
     }
 
