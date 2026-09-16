@@ -6,7 +6,7 @@ ring of inputs, picked with checkboxes right in the tray menu. Call and voice
 apps (Teams, Discord, Zoom, ...) follow the switch, mic included.
 
 <p align="center">
-  <img src="screenshots/taskbarWindow.png" width="330"
+  <img src="screenshots/en/tray-menu.png" width="330"
        alt="SoundFlip tray menu — current output/input, cycle commands with hotkeys, device checklists">
 </p>
 
@@ -73,12 +73,12 @@ output. The menu, dialogs, and toasts follow your Windows light/dark theme
 and display language.
 
 <p align="center">
-  <img src="screenshots/hotkeys.png" width="48%" alt="Hotkeys window">
-  <img src="screenshots/about.png" width="48%" alt="About SoundFlip dialog">
+  <img src="screenshots/en/hotkeys.png" width="48%" alt="Hotkeys window">
+  <img src="screenshots/en/about.png" width="48%" alt="About SoundFlip dialog">
 </p>
 
 <p align="center">
-  <img src="screenshots/language.png" width="430"
+  <img src="screenshots/en/language-menu.png" width="430"
        alt="Language submenu — System default, English, Deutsch, Español, Français, Русский">
 </p>
 
