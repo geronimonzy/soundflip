@@ -77,6 +77,11 @@ and display language.
   <img src="screenshots/about.png" width="48%" alt="About SoundFlip dialog">
 </p>
 
+<p align="center">
+  <img src="screenshots/language.png" width="430"
+       alt="Language submenu — System default, English, Deutsch, Español, Français, Русский">
+</p>
+
 Your device picks and hotkeys are saved automatically to
 `%LocalAppData%\SoundFlip\soundflip.json` — safe to hand-edit if you like.
 
