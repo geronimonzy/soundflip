@@ -73,6 +73,19 @@ sealed class TrayContext : ApplicationContext
                 _ui.Post(_ => UpdateTooltip(), null);
         }));
 
+        // Restore a tray pin lost to a Store update (see TrayPin). Explorer creates
+        // this version's settings entry some time after the icon is added, so look
+        // twice: shortly after start and again a little later.
+        int pinChecks = 0;
+        var pinTimer = new System.Windows.Forms.Timer { Interval = 3000 };
+        pinTimer.Tick += (_, _) =>
+        {
+            TrayPin.CarryForward();
+            pinTimer.Interval = 12000;
+            if (++pinChecks == 2) { pinTimer.Stop(); pinTimer.Dispose(); }
+        };
+        pinTimer.Start();
+
         _showWait = ThreadPool.RegisterWaitForSingleObject(_showEvent,
             (_, _) => _ui.Post(_ => ShowAlreadyRunning(), null), null, Timeout.Infinite, executeOnlyOnce: false);
 

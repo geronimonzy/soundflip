@@ -53,7 +53,17 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 - **Verify in VM:** `Restore-TestVM clean-100` → launch → screenshot; launch again →
   screenshot.
 
-## F2 · Pinning to the visible tray ❓
+## F2 · Pinning to the visible tray ✅ · **FIXED** on `fix/toast-messages`
+
+> Confirmed in the VM with signed test MSIX updates: the tray entry is keyed by the
+> versioned install path, so each update came back unpinned. Fix: `TrayPin.cs` copies
+> an older SoundFlip entry's pin to the new one (only if undecided; never pins by
+> itself). Needed a manifest exclusion of `HKCU\Control Panel\NotifyIconSettings`
+> from MSIX registry virtualization + restricted capability `unvirtualizedResources`
+> (Partner Center will ask for a justification). Verified: pin survives 1.4.4 → 1.4.5.
+>
+> Side finding: `package-msix.ps1` failed under Windows PowerShell 5.1 (em-dashes in a
+> BOM-less UTF-8 file); now ASCII. CI uses pwsh and was unaffected.
 
 - Apps can't programmatically pin (only the undocumented
   `HKCU\Control Panel\NotifyIconSettings\<id>\IsPromoted`; don't write it, Store-policy

@@ -1,6 +1,6 @@
 # Builds an UNSIGNED MSIX package for Microsoft Store submission into .\dist-msix.
 # The Store signs uploaded packages itself, so this package cannot be sideloaded
-# as-is — it exists to be uploaded in Partner Center (or via `msstore publish`).
+# as-is - it exists to be uploaded in Partner Center (or via `msstore publish`).
 #
 # The identity defaults below are dev placeholders. For a submittable package,
 # pass the real values from Partner Center (Product management > Product identity):
@@ -20,7 +20,7 @@ $ErrorActionPreference = "Stop"
 [xml]$proj = Get-Content .\soundflip.csproj
 $versions = @($proj.Project.PropertyGroup.Version | Where-Object { $_ })
 if ($versions.Count -eq 0) { throw "Could not read <Version> from soundflip.csproj" }
-if ($versions.Count -gt 1) { throw "Found multiple <Version> elements in soundflip.csproj — expected exactly one" }
+if ($versions.Count -gt 1) { throw "Found multiple <Version> elements in soundflip.csproj - expected exactly one" }
 $version = $versions[0]
 $msixVersion = "$version.0"
 
@@ -48,7 +48,7 @@ Set-Content "$layout\AppxManifest.xml" $manifest -Encoding utf8
 
 $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.*\x64\makeappx.exe" -ErrorAction SilentlyContinue |
     Sort-Object FullName -Descending | Select-Object -First 1
-if (-not $makeappx) { throw "makeappx.exe not found — install the Windows 10/11 SDK" }
+if (-not $makeappx) { throw "makeappx.exe not found - install the Windows 10/11 SDK" }
 
 New-Item -ItemType Directory -Force -Path .\dist-msix | Out-Null
 $out = ".\dist-msix\soundflip-$version-x64.msix"
@@ -57,4 +57,4 @@ if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed with code $LASTEXITCODE" 
 
 Write-Host ""
 Write-Host "Wrote $out ($msixVersion, identity $PackageName)"
-Write-Host "Unsigned: upload it to Partner Center / msstore publish — the Store signs it."
+Write-Host "Unsigned: upload it to Partner Center / msstore publish - the Store signs it."
