@@ -3,11 +3,14 @@ using System.Drawing;
 
 // One-time first-run window. Windows 11 puts a new app's tray icon behind the ^
 // overflow, so without this a fresh install looks like it did nothing at all.
-// Explains where SoundFlip lives, how to keep the icon visible, and the basics.
-// Returns whether the user ticked "Start with Windows".
+// Explains where SoundFlip lives, how to keep the icon visible, and the basics,
+// and lets the user fix the two things worth deciding up front: the UI language
+// (Windows' display language is only a guess) and Start with Windows.
+// A language pick is applied and saved immediately through onLanguageChanged and
+// the window re-renders in it. Returns whether "Start with Windows" was ticked.
 static class WelcomeDialog
 {
-    public static bool Show(string cycleHotkey, bool offerAutoStart)
+    public static bool Show(string language, string cycleHotkey, bool offerAutoStart, Action<string> onLanguageChanged)
     {
         bool light = Theme.IsLight;
 
@@ -26,7 +29,6 @@ static class WelcomeDialog
 
         using var form = new Form
         {
-            Text = Str.WelcomeTitle.T(),
             FormBorderStyle = FormBorderStyle.FixedDialog,
             StartPosition = FormStartPosition.CenterScreen,
             MaximizeBox = false,
@@ -79,20 +81,49 @@ static class WelcomeDialog
             SizeMode = PictureBoxSizeMode.CenterImage,
             Margin = Dpi.Pad(0, 0, 12, 0),
         }, 0, 0);
-        header.Controls.Add(new Label
+        var heading = new Label
         {
             AutoSize = true,
             Anchor = AnchorStyles.Left,
             Font = MakeFont("Segoe UI Semibold", 13F),
             MaximumSize = new Size(contentWidth - Dpi.S(52), 0),
-            Text = Str.WelcomeHeading.T(),
-        }, 1, 0);
+        };
+        header.Controls.Add(heading, 1, 0);
         body.Controls.Add(header);
 
-        body.Controls.Add(Paragraph(Str.WelcomeTrayText.T(), contentWidth, 12));
-        body.Controls.Add(Paragraph("•  " + Str.WelcomeClickTip.T(), contentWidth, 4));
-        if (!string.IsNullOrWhiteSpace(cycleHotkey))
-            body.Controls.Add(Paragraph("•  " + Str.WelcomeHotkeyTip.T(cycleHotkey), contentWidth, 4));
+        var trayText = Paragraph(contentWidth, 12);
+        var clickTip = Paragraph(contentWidth, 4);
+        var hotkeyTip = Paragraph(contentWidth, 4);
+        body.Controls.Add(trayText);
+        body.Controls.Add(clickTip);
+        if (!string.IsNullOrWhiteSpace(cycleHotkey)) body.Controls.Add(hotkeyTip);
+
+        // Language row: caption + drop-down with the same choices as the tray
+        // Language submenu (system default, then each language in its own name).
+        var languageRow = new TableLayoutPanel
+        {
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = Dpi.Pad(0, 14, 0, 0),
+        };
+        var languageLabel = new Label
+        {
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Margin = Dpi.Pad(0, 0, 12, 0),
+        };
+        var languageBox = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Width = Dpi.S(200),
+            BackColor = Theme.Content(light),
+            ForeColor = Theme.Fore(light),
+            Margin = Padding.Empty,
+        };
+        languageRow.Controls.Add(languageLabel, 0, 0);
+        languageRow.Controls.Add(languageBox, 1, 0);
+        body.Controls.Add(languageRow);
 
         CheckBox? startup = null;
         if (offerAutoStart)
@@ -100,17 +131,15 @@ static class WelcomeDialog
             startup = new CheckBox
             {
                 AutoSize = true,
-                Text = Str.WelcomeStartup.T(),
                 ForeColor = Theme.Fore(light),
-                Margin = Dpi.Pad(0, 12, 0, 0),
+                Margin = Dpi.Pad(0, 10, 0, 0),
             };
             body.Controls.Add(startup);
         }
 
-        var ok = new Win11Button(light) { Text = Str.WelcomeOk.T(), Accent = true, DialogResult = DialogResult.OK };
-        var taskbar = new Win11Button(light) { Text = Str.WelcomeTaskbarSettings.T() };
-        // Longer than the fixed 88px button in most languages.
-        taskbar.Width = Math.Max(taskbar.Width, TextRenderer.MeasureText(taskbar.Text, form.Font).Width + Dpi.S(28));
+        var ok = new Win11Button(light) { Accent = true, DialogResult = DialogResult.OK };
+        var taskbar = new Win11Button(light);
+        int minButtonWidth = taskbar.Width;
         taskbar.Click += (_, _) =>
         {
             try
@@ -129,18 +158,59 @@ static class WelcomeDialog
         form.AcceptButton = ok;
         form.CancelButton = ok;
 
-        // Text length varies a lot between languages: size the window to its content.
+        // All visible text, so a language change can simply re-run it.
+        bool fillingLanguages = false;
+        void ApplyTexts()
+        {
+            form.Text = Str.WelcomeTitle.T();
+            heading.Text = Str.WelcomeHeading.T();
+            trayText.Text = Str.WelcomeTrayText.T();
+            clickTip.Text = "•  " + Str.WelcomeClickTip.T();
+            hotkeyTip.Text = "•  " + Str.WelcomeHotkeyTip.T(cycleHotkey);
+            languageLabel.Text = Str.Language.T();
+            if (startup is not null) startup.Text = Str.WelcomeStartup.T();
+            ok.Text = Str.WelcomeOk.T();
+            taskbar.Text = Str.WelcomeTaskbarSettings.T();
+            // Longer than the fixed-width button in most languages.
+            taskbar.Width = Math.Max(minButtonWidth, TextRenderer.MeasureText(taskbar.Text, form.Font).Width + Dpi.S(28));
+
+            // "System default" is itself translated, so refill the list in place.
+            fillingLanguages = true;
+            string selected = (languageBox.SelectedItem as LanguageChoice)?.Code ?? Loc.Normalize(language);
+            languageBox.Items.Clear();
+            languageBox.Items.Add(new LanguageChoice(Loc.Auto, Str.LanguageSystem.T()));
+            foreach (var code in Loc.Supported) languageBox.Items.Add(new LanguageChoice(code, Loc.NativeName(code)));
+            languageBox.SelectedItem = languageBox.Items.Cast<LanguageChoice>().First(choice => choice.Code == selected);
+            fillingLanguages = false;
+
+            // Text length varies a lot between languages: size the window to its content.
+            if (form.IsHandleCreated)
+                form.ClientSize = new Size(form.ClientSize.Width, body.PreferredSize.Height + footer.Height);
+        }
+
+        languageBox.SelectedIndexChanged += (_, _) =>
+        {
+            if (fillingLanguages || languageBox.SelectedItem is not LanguageChoice choice) return;
+            onLanguageChanged(choice.Code);
+            ApplyTexts();
+        };
+
+        ApplyTexts();
         form.Load += (_, _) => form.ClientSize = new Size(form.ClientSize.Width, body.PreferredSize.Height + footer.Height);
 
         form.ShowDialog();
         return startup?.Checked == true;
     }
 
-    static Label Paragraph(string text, int width, int bottomMargin) => new()
+    sealed record LanguageChoice(string Code, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    static Label Paragraph(int width, int bottomMargin) => new()
     {
         AutoSize = true,
         MaximumSize = new Size(width, 0),
-        Text = text,
         Margin = Dpi.Pad(0, 0, 0, bottomMargin),
     };
 }

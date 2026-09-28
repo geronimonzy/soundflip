@@ -29,7 +29,9 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 
 > One-time welcome window on first run (`WelcomeDialog.cs`): where the icon is, how
 > to keep it visible (+ *Taskbar settings* button), click/hotkey basics, optional
-> *Start with Windows*. Verified in VM at 250% incl. the autostart checkbox.
+> *Start with Windows*, and a *Language* drop-down (applied and saved immediately,
+> the window re-renders). Verified in VM at 250% incl. the autostart checkbox and
+> switching to de/es/ru.
 > Still open: a second launch still exits silently (should surface the running
 > instance).
 

@@ -58,7 +58,7 @@ sealed class TrayContext : ApplicationContext
         _autoStart = await AutoStart.GetStatusAsync();
         bool offerAutoStart = _autoStart.CanToggle && !_autoStart.Enabled;
 
-        if (WelcomeDialog.Show(_settings.CycleOutputs, offerAutoStart))
+        if (WelcomeDialog.Show(_settings.Language, _settings.CycleOutputs, offerAutoStart, SetLanguage))
             await ToggleAutoStartAsync();
         else if (!_icon.ContextMenuStrip!.Visible)
             BuildMenu();
