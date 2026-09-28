@@ -107,6 +107,6 @@ telemetry, no network access; settings live in one local JSON file. See
 
 ## Credits
 
-The speaker icon is the "Speaker 2" glyph from
+The icon combines the "Speaker 2" and "Arrow Sync Circle" glyphs from
 [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)
 by Microsoft, used under the MIT license.

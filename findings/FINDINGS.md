@@ -198,7 +198,10 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
   (`CoreAudioController.AudioDeviceChanged` / `IMMNotificationClient`) and refresh the
   tooltip (+ flyout if open). Consider showing output **and** input in the tooltip.
 
-## F9 · Tray glyph ≈ Windows' own volume icon ✅ (observation)
+## F9 · Tray glyph ≈ Windows' own volume icon ✅ (observation) · **FIXED** on `fix/toast-messages`
+
+> Option B chosen: speaker + "Arrow Sync Circle" badge (Fluent, MIT). Tray icon, app.ico
+> and generated Store logos updated; verified in the VM tray at 250%.
 
 - SoundFlip's filled Fluent "Speaker 2" is almost indistinguishable from the system
   volume icon. Once pinned next to it (what F1 asks users to do) it's confusing.

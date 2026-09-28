@@ -649,45 +649,95 @@ static class TrayArt
         g.Restore(state);
     }
 
-    // "Speaker 2" (filled, 24px) from Microsoft's Fluent UI System Icons, MIT
-    // licensed: https://github.com/microsoft/fluentui-system-icons
-    // The SVG path is baked in as bezier/line segments in its native 24-unit space.
+    // Tray glyph: Fluent UI System Icons (Microsoft, MIT licensed,
+    // https://github.com/microsoft/fluentui-system-icons) "Speaker 2" (filled, 24px)
+    // scaled to 88%, with a ring knocked out around an "Arrow Sync Circle" badge
+    // (filled, 24px, at 52% in the bottom-right). The badge is what sets it apart
+    // from the Windows volume icon next to it. GDI+ has no anti-aliased boolean
+    // ops, so the combined outline was computed once (WPF Geometry.Combine) and is
+    // baked in here as bezier/line segments in the native 24-unit space.
     static GraphicsPath SpeakerPath()
     {
         var path = new GraphicsPath(FillMode.Winding);
         path.StartFigure();
-        path.AddLine(15f, 4.25049f, 15f, 19.7461f);
-        path.AddBezier(15f, 19.7461f, 15f, 20.8247f, 13.7255f, 21.397f, 12.9194f, 20.6802f);
-        path.AddLine(12.9194f, 20.6802f, 8.42793f, 16.6865f);
-        path.AddBezier(8.42793f, 16.6865f, 8.29063f, 16.5644f, 8.11329f, 16.497f, 7.92956f, 16.497f);
-        path.AddLine(7.92956f, 16.497f, 4.25f, 16.497f);
-        path.AddBezier(4.25f, 16.497f, 3.00736f, 16.497f, 2f, 15.4896f, 2f, 14.247f);
-        path.AddLine(2f, 14.247f, 2f, 9.74907f);
-        path.AddBezier(2f, 9.74907f, 2f, 8.50643f, 3.00736f, 7.49907f, 4.25f, 7.49907f);
-        path.AddLine(4.25f, 7.49907f, 7.92961f, 7.49907f);
-        path.AddBezier(7.92961f, 7.49907f, 8.11333f, 7.49907f, 8.29065f, 7.43165f, 8.42794f, 7.30958f);
-        path.AddLine(8.42794f, 7.30958f, 12.9195f, 3.31631f);
-        path.AddBezier(12.9195f, 3.31631f, 13.7255f, 2.59964f, 15f, 3.17187f, 15f, 4.25049f);
+        path.AddBezier(15.77f, 18.24f, 15.5546f, 18.24f, 15.38f, 18.4146f, 15.38f, 18.63f);
+        path.AddLine(15.38f, 18.63f, 15.38f, 20.19f);
+        path.AddBezier(15.38f, 20.19f, 15.38f, 20.4054f, 15.5546f, 20.58f, 15.77f, 20.58f);
+        path.AddBezier(15.77f, 20.58f, 15.9854f, 20.58f, 16.16f, 20.4054f, 16.16f, 20.19f);
+        path.AddLine(16.16f, 20.19f, 16.16f, 19.8003f);
+        path.AddBezier(16.16f, 19.8003f, 16.6344f, 20.4316f, 17.3895f, 20.84f, 18.24f, 20.84f);
+        path.AddBezier(18.24f, 20.84f, 19.0335f, 20.84f, 19.7443f, 20.4841f, 20.2206f, 19.9244f);
+        path.AddBezier(20.2206f, 19.9244f, 20.3602f, 19.7604f, 20.3404f, 19.5143f, 20.1764f, 19.3747f);
+        path.AddBezier(20.1764f, 19.3747f, 20.0124f, 19.2351f, 19.7663f, 19.2549f, 19.6266f, 19.4189f);
+        path.AddBezier(19.6266f, 19.4189f, 19.2922f, 19.8118f, 18.7953f, 20.06f, 18.24f, 20.06f);
+        path.AddBezier(18.24f, 20.06f, 17.514f, 20.06f, 16.8872f, 19.6349f, 16.5951f, 19.02f);
+        path.AddLine(16.5951f, 19.02f, 17.33f, 19.02f);
+        path.AddBezier(17.33f, 19.02f, 17.5454f, 19.02f, 17.72f, 18.8454f, 17.72f, 18.63f);
+        path.AddBezier(17.72f, 18.63f, 17.72f, 18.4146f, 17.5454f, 18.24f, 17.33f, 18.24f);
+        path.AddLine(17.33f, 18.24f, 15.77f, 18.24f);
         path.CloseFigure();
         path.StartFigure();
-        path.AddBezier(18.9916f, 5.89782f, 19.3244f, 5.65128f, 19.7941f, 5.72126f, 20.0407f, 6.05411f);
-        path.AddBezier(20.0407f, 6.05411f, 21.2717f, 7.71619f, 22f, 9.77439f, 22f, 12.0005f);
-        path.AddBezier(22f, 12.0005f, 22f, 14.2266f, 21.2717f, 16.2848f, 20.0407f, 17.9469f);
-        path.AddBezier(20.0407f, 17.9469f, 19.7941f, 18.2798f, 19.3244f, 18.3497f, 18.9916f, 18.1032f);
-        path.AddBezier(18.9916f, 18.1032f, 18.6587f, 17.8567f, 18.5888f, 17.387f, 18.8353f, 17.0541f);
-        path.AddBezier(18.8353f, 17.0541f, 19.8815f, 15.6416f, 20.5f, 13.8943f, 20.5f, 12.0005f);
-        path.AddBezier(20.5f, 12.0005f, 20.5f, 10.1067f, 19.8815f, 8.35945f, 18.8353f, 6.9469f);
-        path.AddBezier(18.8353f, 6.9469f, 18.5888f, 6.61404f, 18.6587f, 6.14435f, 18.9916f, 5.89782f);
+        path.AddBezier(18.24f, 15.64f, 17.4461f, 15.64f, 16.7351f, 15.9963f, 16.2588f, 16.5563f);
+        path.AddBezier(16.2588f, 16.5563f, 16.1192f, 16.7203f, 16.1391f, 16.9665f, 16.3032f, 17.106f);
+        path.AddBezier(16.3032f, 17.106f, 16.4672f, 17.2456f, 16.7134f, 17.2257f, 16.8529f, 17.0616f);
+        path.AddBezier(16.8529f, 17.0616f, 17.1874f, 16.6684f, 17.6845f, 16.42f, 18.24f, 16.42f);
+        path.AddBezier(18.24f, 16.42f, 18.966f, 16.42f, 19.5927f, 16.8451f, 19.8849f, 17.46f);
+        path.AddLine(19.8849f, 17.46f, 19.15f, 17.46f);
+        path.AddBezier(19.15f, 17.46f, 18.9346f, 17.46f, 18.76f, 17.6346f, 18.76f, 17.85f);
+        path.AddBezier(18.76f, 17.85f, 18.76f, 18.0654f, 18.9346f, 18.24f, 19.15f, 18.24f);
+        path.AddLine(19.15f, 18.24f, 20.71f, 18.24f);
+        path.AddBezier(20.71f, 18.24f, 20.9254f, 18.24f, 21.1f, 18.0654f, 21.1f, 17.85f);
+        path.AddLine(21.1f, 17.85f, 21.1f, 16.29f);
+        path.AddBezier(21.1f, 16.29f, 21.1f, 16.0746f, 20.9254f, 15.9f, 20.71f, 15.9f);
+        path.AddBezier(20.71f, 15.9f, 20.4946f, 15.9f, 20.32f, 16.0746f, 20.32f, 16.29f);
+        path.AddLine(20.32f, 16.29f, 20.32f, 16.6798f);
+        path.AddBezier(20.32f, 16.6798f, 19.8457f, 16.0484f, 19.0905f, 15.64f, 18.24f, 15.64f);
         path.CloseFigure();
         path.StartFigure();
-        path.AddBezier(17.143f, 8.36982f, 17.5072f, 8.17262f, 17.9624f, 8.30806f, 18.1596f, 8.67233f);
-        path.AddBezier(18.1596f, 8.67233f, 18.6958f, 9.66294f, 19f, 10.7973f, 19f, 12.0005f);
-        path.AddBezier(19f, 12.0005f, 19f, 13.2037f, 18.6958f, 14.338f, 18.1596f, 15.3287f);
-        path.AddBezier(18.1596f, 15.3287f, 17.9624f, 15.6929f, 17.5072f, 15.8284f, 17.143f, 15.6312f);
-        path.AddBezier(17.143f, 15.6312f, 16.7787f, 15.434f, 16.6432f, 14.9788f, 16.8404f, 14.6146f);
-        path.AddBezier(16.8404f, 14.6146f, 17.2609f, 13.8378f, 17.5f, 12.9482f, 17.5f, 12.0005f);
-        path.AddBezier(17.5f, 12.0005f, 17.5f, 11.0528f, 17.2609f, 10.1632f, 16.8404f, 9.38642f);
-        path.AddBezier(16.8404f, 9.38642f, 16.6432f, 9.02216f, 16.7787f, 8.56701f, 17.143f, 8.36982f);
+        path.AddBezier(18.24f, 13.04f, 21.1119f, 13.04f, 23.44f, 15.3681f, 23.44f, 18.24f);
+        path.AddBezier(23.44f, 18.24f, 23.44f, 21.1119f, 21.1119f, 23.44f, 18.24f, 23.44f);
+        path.AddBezier(18.24f, 23.44f, 15.3681f, 23.44f, 13.04f, 21.1119f, 13.04f, 18.24f);
+        path.AddBezier(13.04f, 18.24f, 13.04f, 15.3681f, 15.3681f, 13.04f, 18.24f, 13.04f);
+        path.CloseFigure();
+        path.StartFigure();
+        path.AddBezier(15.5883f, 7.7133f, 15.7502f, 7.7614f, 15.8937f, 7.8714f, 15.9804f, 8.0317f);
+        path.AddBezier(15.9804f, 8.0317f, 16.4523f, 8.9034f, 16.72f, 9.9016f, 16.72f, 10.9604f);
+        path.AddLine(16.72f, 10.9604f, 16.599f, 11.9232f);
+        path.AddLine(16.599f, 11.9232f, 15.631f, 12.1187f);
+        path.AddLine(15.631f, 12.1187f, 15.0005f, 12.5437f);
+        path.AddLine(15.0005f, 12.5437f, 15.4f, 10.9604f);
+        path.AddBezier(15.4f, 10.9604f, 15.4f, 10.1265f, 15.1896f, 9.3436f, 14.8196f, 8.66f);
+        path.AddBezier(14.8196f, 8.66f, 14.646f, 8.3395f, 14.7653f, 7.939f, 15.0858f, 7.7654f);
+        path.AddBezier(15.0858f, 7.7654f, 15.2461f, 7.6787f, 15.4264f, 7.6651f, 15.5883f, 7.7133f);
+        path.CloseFigure();
+        path.StartFigure();
+        path.AddBezier(17.2027f, 5.4677f, 17.3697f, 5.4925f, 17.5273f, 5.5812f, 17.6358f, 5.7276f);
+        path.AddBezier(17.6358f, 5.7276f, 18.7191f, 7.1902f, 19.36f, 9.0015f, 19.36f, 10.9604f);
+        path.AddLine(19.36f, 10.9604f, 19.2224f, 11.8064f);
+        path.AddLine(19.2224f, 11.8064f, 18.2f, 11.6f);
+        path.AddLine(18.2f, 11.6f, 17.9271f, 11.6551f);
+        path.AddLine(17.9271f, 11.6551f, 18.04f, 10.9604f);
+        path.AddBezier(18.04f, 10.9604f, 18.04f, 9.2939f, 17.4957f, 7.7563f, 16.5751f, 6.5133f);
+        path.AddBezier(16.5751f, 6.5133f, 16.3581f, 6.2204f, 16.4197f, 5.807f, 16.7126f, 5.5901f);
+        path.AddBezier(16.7126f, 5.5901f, 16.859f, 5.4816f, 17.0356f, 5.4428f, 17.2027f, 5.4677f);
+        path.CloseFigure();
+        path.StartFigure();
+        path.AddBezier(11.9545f, 3.0473f, 12.5691f, 2.9673f, 13.2f, 3.4285f, 13.2f, 4.1404f);
+        path.AddLine(13.2f, 4.1404f, 13.2f, 14.0271f);
+        path.AddLine(13.2f, 14.0271f, 12.1187f, 15.631f);
+        path.AddBezier(12.1187f, 15.631f, 11.7847f, 16.4206f, 11.6f, 17.2887f, 11.6f, 18.2f);
+        path.AddLine(11.6f, 18.2f, 11.7126f, 18.7577f);
+        path.AddLine(11.7126f, 18.7577f, 11.3691f, 18.5986f);
+        path.AddLine(11.3691f, 18.5986f, 7.4166f, 15.0841f);
+        path.AddBezier(7.4166f, 15.0841f, 7.2958f, 14.9767f, 7.1397f, 14.9174f, 6.978f, 14.9174f);
+        path.AddLine(6.978f, 14.9174f, 3.74f, 14.9174f);
+        path.AddBezier(3.74f, 14.9174f, 2.6465f, 14.9174f, 1.76f, 14.0308f, 1.76f, 12.9374f);
+        path.AddLine(1.76f, 12.9374f, 1.76f, 8.9792f);
+        path.AddBezier(1.76f, 8.9792f, 1.76f, 7.8857f, 2.6465f, 6.9992f, 3.74f, 6.9992f);
+        path.AddLine(3.74f, 6.9992f, 6.9781f, 6.9992f);
+        path.AddBezier(6.9781f, 6.9992f, 7.1397f, 6.9992f, 7.2958f, 6.9399f, 7.4166f, 6.8324f);
+        path.AddLine(7.4166f, 6.8324f, 11.3692f, 3.3184f);
+        path.AddBezier(11.3692f, 3.3184f, 11.5465f, 3.1607f, 11.7496f, 3.0739f, 11.9545f, 3.0473f);
         path.CloseFigure();
         return path;
     }
