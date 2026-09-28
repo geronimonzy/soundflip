@@ -58,3 +58,7 @@ Gotchas:
   Windows Terminal as default, hidden PowerShell launches stalled on a cold start.
 - `Disable-PnpDevice` on an AudioEndpoint does NOT make it inactive to Core Audio; use
   `endpoint.ps1`.
+- Right after a restore the VM is sluggish: the first run of a new build can take
+  20-60 s (Defender, offline) and the tray icon can take minutes to register with a
+  busy Explorer. Warm up with `soundflip list` and allow a few minutes before timing
+  or screenshotting tray startup.
