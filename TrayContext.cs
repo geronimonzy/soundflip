@@ -5,6 +5,9 @@ using AudioSwitcher.AudioApi.CoreAudio;
 
 sealed class TrayContext : ApplicationContext
 {
+    // Set by a second `soundflip` launch (see Program.RunTrayApp).
+    public const string ShowEventName = @"Local\SoundFlip.Show";
+
     readonly AppSettings _settings;
     readonly CoreAudioController _controller = new();
     readonly NotifyIcon _icon;
@@ -12,6 +15,8 @@ sealed class TrayContext : ApplicationContext
     ToastForm? _toast;
     readonly System.Windows.Forms.Timer _clickTimer = new() { Interval = SystemInformation.DoubleClickTime };
     readonly SynchronizationContext _ui;
+    readonly EventWaitHandle _showEvent = new(false, EventResetMode.AutoReset, ShowEventName);
+    readonly RegisteredWaitHandle _showWait;
     readonly IDisposable _deviceChanges;
     AutoStartStatus _autoStart = AutoStartStatus.Loading;
     bool? _rendererLight;
@@ -67,6 +72,9 @@ sealed class TrayContext : ApplicationContext
                 or DeviceChangedType.DeviceAdded or DeviceChangedType.DeviceRemoved)
                 _ui.Post(_ => UpdateTooltip(), null);
         }));
+
+        _showWait = ThreadPool.RegisterWaitForSingleObject(_showEvent,
+            (_, _) => _ui.Post(_ => ShowAlreadyRunning(), null), null, Timeout.Infinite, executeOnlyOnce: false);
 
         RebindHotkeys();
         BuildMenu();
@@ -157,8 +165,8 @@ sealed class TrayContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem(CycleLabel(Str.CycleInput.T(), _settings.CycleInputs), null, (_, _) => CycleInputs()));
         menu.Items.Add(new ToolStripSeparator());
 
-        menu.Items.Add(DeviceMenu(Str.Output.T(), AudioKind.Output));
-        menu.Items.Add(DeviceMenu(Str.Input.T(), AudioKind.Input));
+        menu.Items.Add(DeviceMenu(Str.OutputsInCycle.T(), AudioKind.Output));
+        menu.Items.Add(DeviceMenu(Str.InputsInCycle.T(), AudioKind.Input));
         menu.Items.Add(new ToolStripSeparator());
 
         menu.Items.Add(new ToolStripMenuItem(Str.Hotkeys.T(), null, (_, _) => EditHotkeys()));
@@ -258,6 +266,14 @@ sealed class TrayContext : ApplicationContext
         }
 
         return root;
+    }
+
+    // Launched again while running (e.g. from Start because the icon is hidden in
+    // the overflow): say where SoundFlip is and open its menu.
+    void ShowAlreadyRunning()
+    {
+        Notify(Str.AlreadyRunningTitle.T(), Str.AlreadyRunningText.T(), ToolTipIcon.Info);
+        ShowMenu();
     }
 
     // NotifyIcon's own (non-public) ShowContextMenu does what a tray menu needs:
@@ -415,6 +431,8 @@ sealed class TrayContext : ApplicationContext
         {
             _toast?.Close();
             _clickTimer.Dispose();
+            _showWait.Unregister(null);
+            _showEvent.Dispose();
             _deviceChanges.Dispose();
             _hotkeys.Dispose();
             var icon = _icon.Icon;

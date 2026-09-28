@@ -50,11 +50,12 @@ print into the terminal they were started from.
 ## Tray app
 
 Run `soundflip` — a speaker icon appears in the notification area (on first
-launch a short welcome explains where to find it and how to keep it visible).
+launch a short welcome explains where to find it and how to keep it visible;
+launching it again while it runs points you back to it).
 Click it for everything:
 
 - **Cycle output / Cycle input** — jump to the next device in the ring.
-- **Output / Input** — live checklists of your active devices. Tick the ones
+- **Outputs in cycle / Inputs in cycle** — live checklists of your active devices. Tick the ones
   you want in the cycle ring (the menu stays open so you can tick several);
   with nothing ticked, cycling walks every active device. ● marks the current
   default. Changes take effect immediately.

@@ -25,15 +25,15 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 
 ---
 
-## F1 · After install/launch the app is invisible ✅ · **PARTLY FIXED** on `fix/toast-messages`
+## F1 · After install/launch the app is invisible ✅ · **FIXED** on `fix/toast-messages`
 
 > One-time welcome window on first run (`WelcomeDialog.cs`): where the icon is, how
 > to keep it visible (+ *Taskbar settings* button), click/hotkey basics, optional
 > *Start with Windows*, and a *Language* drop-down (applied and saved immediately,
 > the window re-renders). Verified in VM at 250% incl. the autostart checkbox and
 > switching to de/es/ru.
-> Still open: a second launch still exits silently (should surface the running
-> instance).
+> Second launch: signals the running instance (named event `Local\SoundFlip.Show`),
+> which shows "SoundFlip is already running" + opens its menu. Verified in VM.
 
 - **Observed:** on a fresh Windows 11 profile the tray icon goes straight into the `^`
   overflow; the taskbar shows nothing new, no window, no notification
@@ -122,7 +122,10 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
   First-run tips (F1) can live in the same flyout. Keep the right-click menu for power
   features. Decide what double-click should do then (probably nothing or cycle).
 
-## F6 · Clicking a device in the menu doesn't switch to it ✅
+## F6 · Clicking a device in the menu doesn't switch to it ✅ · **FIXED** (renamed) on `fix/toast-messages`
+
+> Decision: keep click = tick; submenus renamed "Outputs in cycle" / "Inputs in cycle"
+> (5 languages) so they no longer read as device pickers.
 
 - **Observed:** Output/Input submenus are checklists of *ring membership* (✓ = in ring,
   ● = current default, `img/09-output-submenu-250.png`). Clicking a device toggles the
@@ -206,7 +209,10 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
   tray menu.", which is the item right above it (`AutoStart.cs:100`,
   `TrayContext.cs:107`). Drop the hint when the toggle itself is available.
 
-## F12 · Default Ctrl+Alt+O is claimed before the user opts in 📄 (minor)
+## F12 · Default Ctrl+Alt+O is claimed before the user opts in 📄 (minor) · **RESOLVED**
+
+> With an empty ring cycling all devices, the default hotkey is useful from the first
+> launch, and the welcome window names it. Kept as is.
 
 - Registered on first launch although nothing is configured (F3). Conflicts are
   reported, but a silent grab of a common chord on first run is surprising. With

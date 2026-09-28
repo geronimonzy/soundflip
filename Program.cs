@@ -111,7 +111,20 @@ internal static class Program
         // add a duplicate tray icon whose hotkeys all fail to register. The
         // mutex is held for the app's lifetime and released on exit.
         using var instance = new Mutex(initiallyOwned: true, @"Local\SoundFlip.Tray", out bool createdNew);
-        if (!createdNew) return 0;
+        if (!createdNew)
+        {
+            // Exiting silently read as "nothing happened": ask the running instance
+            // to show itself instead (TrayContext listens on this event).
+            if (EventWaitHandle.TryOpenExisting(TrayContext.ShowEventName, out var show))
+            {
+                using (show)
+                {
+                    NativeMethods.AllowSetForegroundWindow(NativeMethods.ASFW_ANY);
+                    show.Set();
+                }
+            }
+            return 0;
+        }
 
         // Main is already [STAThread], so run the UI on it directly. The
         // Application setup calls must precede any window — including the
