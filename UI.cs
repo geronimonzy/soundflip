@@ -54,6 +54,27 @@ static class Gfx
     }
 }
 
+// Every pixel constant in the UI is authored at 96 DPI (100% scaling). The process
+// is system-DPI-aware and forms are built in code with AutoScaleMode.None, so fonts
+// (sized in points) follow the display scale but raw pixel sizes don't: route
+// every size, padding and margin through S() so layouts grow with the text.
+static class Dpi
+{
+    static readonly float Factor = ReadFactor();
+
+    static float ReadFactor()
+    {
+        using var g = Graphics.FromHwnd(IntPtr.Zero);
+        return g.DpiX / 96F;
+    }
+
+    public static int S(int px) => (int)Math.Round(px * Factor);
+    public static float S(float px) => px * Factor;
+    public static Size Sz(int width, int height) => new(S(width), S(height));
+    public static Padding Pad(int left, int top, int right, int bottom) => new(S(left), S(top), S(right), S(bottom));
+    public static Padding Pad(int all) => new(S(all));
+}
+
 static class Win11
 {
     const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
@@ -112,8 +133,8 @@ sealed class Win11Button : Button
     {
         _light = light;
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
-        Size = new Size(88, 32);
-        Margin = new Padding(8, 0, 0, 0);
+        Size = Dpi.Sz(88, 32);
+        Margin = Dpi.Pad(8, 0, 0, 0);
     }
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
@@ -132,7 +153,7 @@ sealed class Win11Button : Button
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
         var rect = new RectangleF(0.5F, 0.5F, Width - 1, Height - 1);
-        using var path = Gfx.Round(rect, 4F);
+        using var path = Gfx.Round(rect, Dpi.S(4F));
         using (var fill = new SolidBrush(FillColor()))
             g.FillPath(fill, path);
 
@@ -167,14 +188,12 @@ sealed class Win11Button : Button
 // hairline on top and buttons flowing in from the right.
 static class DialogFooter
 {
-    public const int Height = 60;
-
     public static Panel Create(bool light, params Button[] buttonsRightToLeft)
     {
         var footer = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = Height,
+            Height = Dpi.S(60),
             BackColor = Theme.Footer(light),
         };
         footer.Paint += (_, e) =>
@@ -187,7 +206,7 @@ static class DialogFooter
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(8, 14, 24, 0),
+            Padding = Dpi.Pad(8, 14, 24, 0),
         };
         foreach (var button in buttonsRightToLeft) flow.Controls.Add(button);
         footer.Controls.Add(flow);
@@ -226,11 +245,11 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
     {
         if (!e.Item.Selected || !e.Item.Enabled) return;
 
-        var bounds = new Rectangle(4, 1, e.Item.Width - 8, e.Item.Height - 2);
+        var bounds = new Rectangle(Dpi.S(4), 1, e.Item.Width - Dpi.S(8), e.Item.Height - 2);
         var oldSmoothing = e.Graphics.SmoothingMode;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         using var brush = new SolidBrush(Theme.Hover(_light));
-        using var path = Gfx.Round(bounds, 6);
+        using var path = Gfx.Round(bounds, Dpi.S(6F));
         e.Graphics.FillPath(brush, path);
         e.Graphics.SmoothingMode = oldSmoothing;
     }
@@ -246,7 +265,7 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
         var bounds = e.Item.Bounds;
         int y = bounds.Height / 2;
         using var pen = new Pen(Theme.Line(_light));
-        e.Graphics.DrawLine(pen, bounds.Left + 8, y, bounds.Right - 8, y);
+        e.Graphics.DrawLine(pen, bounds.Left + Dpi.S(8), y, bounds.Right - Dpi.S(8), y);
     }
 
     protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
@@ -254,7 +273,7 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
         var oldSmoothing = e.Graphics.SmoothingMode;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         var bounds = e.ImageRectangle;
-        using var pen = new Pen(Theme.Fore(_light), 1.6F) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        using var pen = new Pen(Theme.Fore(_light), Dpi.S(1.6F)) { StartCap = LineCap.Round, EndCap = LineCap.Round };
         float x = bounds.X + bounds.Width * 0.18F;
         float y = bounds.Y + bounds.Height * 0.52F;
         e.Graphics.DrawLines(pen, new[]
@@ -300,10 +319,10 @@ sealed class ToastForm : Form
     readonly Color _foreground;
     readonly Color _background;
 
-    const int Radius = 9;
-    const int PaddingX = 28;
-    const int PaddingY = 16;
-    const int MaxTextWidth = 480;
+    static readonly int Radius = Dpi.S(9);
+    static readonly int PaddingX = Dpi.S(28);
+    static readonly int PaddingY = Dpi.S(16);
+    static readonly int MaxTextWidth = Dpi.S(480);
 
     public ToastForm(string message, Color foreground, Color background)
     {
@@ -325,12 +344,12 @@ sealed class ToastForm : Form
         probe.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         var measured = probe.MeasureString(_message, Font, MaxTextWidth, format);
 
-        Width = Math.Max((int)MathF.Ceiling(measured.Width) + PaddingX * 2 + 2, 180);
-        Height = Math.Max((int)MathF.Ceiling(measured.Height) + PaddingY * 2 + 2, 56);
+        Width = Math.Max((int)MathF.Ceiling(measured.Width) + PaddingX * 2 + 2, Dpi.S(180));
+        Height = Math.Max((int)MathF.Ceiling(measured.Height) + PaddingY * 2 + 2, Dpi.S(56));
 
         var screen = Screen.FromPoint(Cursor.Position);
         var area = screen.WorkingArea;
-        Location = new Point(area.Left + (area.Width - Width) / 2, area.Bottom - Height - 14);
+        Location = new Point(area.Left + (area.Width - Width) / 2, area.Bottom - Height - Dpi.S(14));
 
         _life.Tick += (_, _) =>
         {
@@ -489,7 +508,9 @@ static class TrayArt
 {
     public static Icon Speaker()
     {
-        using var bitmap = SpeakerBitmap(32);
+        // Render at the size the tray actually shows (16px at 100%, 40px at 250%)
+        // so the shell never rescales a fixed-size bitmap.
+        using var bitmap = SpeakerBitmap(SystemInformation.SmallIconSize.Width);
         IntPtr handle = bitmap.GetHicon();
         try
         {

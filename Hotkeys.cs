@@ -215,7 +215,7 @@ static class HotkeyDialog
             MaximizeBox = false,
             ShowIcon = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(430, 226),
+            ClientSize = Dpi.Sz(430, 226),
             BackColor = Theme.Content(light),
             ForeColor = Theme.Fore(light),
             KeyPreview = true,
@@ -226,7 +226,7 @@ static class HotkeyDialog
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(24, 18, 24, 0),
+            Padding = Dpi.Pad(24, 18, 24, 0),
             ColumnCount = 1,
             RowCount = 4,
         };
@@ -240,7 +240,7 @@ static class HotkeyDialog
             AutoSize = true,
             Font = new Font("Segoe UI Semibold", 12F),
             Text = Str.PressNewShortcut.T(),
-            Margin = new Padding(0, 0, 0, 8),
+            Margin = Dpi.Pad(0, 0, 0, 8),
         };
 
         var currentLabel = new Label
@@ -248,7 +248,7 @@ static class HotkeyDialog
             AutoSize = true,
             Font = new Font("Segoe UI", 10F),
             Text = Str.CurrentHotkey.T(current),
-            Margin = new Padding(0, 0, 0, 8),
+            Margin = Dpi.Pad(0, 0, 0, 8),
         };
 
         var hint = new Label
@@ -256,8 +256,8 @@ static class HotkeyDialog
             AutoSize = true,
             Font = new Font("Segoe UI", 9.5F),
             Text = Str.HotkeyHint.T(),
-            MaximumSize = new Size(380, 0),
-            Margin = new Padding(0, 0, 0, 12),
+            MaximumSize = Dpi.Sz(380, 0),
+            Margin = Dpi.Pad(0, 0, 0, 12),
         };
 
         var status = new Label
@@ -266,7 +266,7 @@ static class HotkeyDialog
             Font = new Font("Segoe UI", 9.5F),
             Text = Str.WaitingForShortcut.T(),
             ForeColor = Theme.Fore(light),
-            Margin = new Padding(0, 6, 0, 0),
+            Margin = Dpi.Pad(0, 6, 0, 0),
         };
 
         var cancel = new Win11Button(light) { Text = Str.Cancel.T(), DialogResult = DialogResult.Cancel };
@@ -347,7 +347,7 @@ static class HotkeysWindow
             MaximizeBox = false,
             ShowIcon = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(460, 184),
+            ClientSize = Dpi.Sz(460, 184),
             BackColor = Theme.Content(light),
             ForeColor = Theme.Fore(light),
             Font = new Font("Segoe UI", 9.5F),
@@ -359,15 +359,15 @@ static class HotkeysWindow
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(24, 24, 24, 24),
+            Padding = Dpi.Pad(24, 24, 24, 24),
             ColumnCount = 3,
             RowCount = 2,
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi.S(104F)));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi.S(80F)));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi.S(44F)));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi.S(32F)));
 
         AddRow(layout, 0, Str.CycleOutputs.T(), light, () => cycleOutputs, value => cycleOutputs = value);
         AddRow(layout, 1, Str.CycleInputs.T(), light, () => cycleInputs, value => cycleInputs = value);
@@ -411,17 +411,17 @@ static class HotkeysWindow
             Anchor = AnchorStyles.Left,
             ForeColor = Theme.Fore(light),
             TextAlign = ContentAlignment.MiddleLeft,
-            Margin = new Padding(0, 0, 12, gap),
+            Margin = Dpi.Pad(0, 0, 12, gap),
         };
 
-        var pick = new Win11Button(light) { Text = Show(get()), Dock = DockStyle.Fill, Margin = new Padding(0, 0, 12, gap) };
+        var pick = new Win11Button(light) { Text = Show(get()), Dock = DockStyle.Fill, Margin = Dpi.Pad(0, 0, 12, gap) };
         pick.Click += (_, _) =>
         {
             string? picked = HotkeyDialog.Ask(get());
             if (picked is not null) { set(picked); pick.Text = Show(picked); }
         };
 
-        var clear = new Win11Button(light) { Text = Str.Clear.T(), Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, gap) };
+        var clear = new Win11Button(light) { Text = Str.Clear.T(), Dock = DockStyle.Fill, Margin = Dpi.Pad(0, 0, 0, gap) };
         clear.Click += (_, _) => { set(""); pick.Text = Show(""); };
 
         layout.Controls.Add(label, 0, row);
