@@ -49,13 +49,15 @@ print into the terminal they were started from.
 
 ## Tray app
 
-Run `soundflip` — a speaker icon appears in the notification area. Right-click
-it for everything:
+Run `soundflip` — a speaker icon appears in the notification area (on first
+launch a short welcome explains where to find it and how to keep it visible).
+Click it for everything:
 
 - **Cycle output / Cycle input** — jump to the next device in the ring.
 - **Output / Input** — live checklists of your active devices. Tick the ones
   you want in the cycle ring (the menu stays open so you can tick several);
-  ● marks the current default. Changes take effect immediately.
+  with nothing ticked, cycling walks every active device. ● marks the current
+  default. Changes take effect immediately.
 - **Hotkeys…** — set both cycle hotkeys in one window. Defaults to
   `Ctrl+Alt+O` for outputs; combos are any modifiers plus a letter, digit, or
   F-key. If another app already owns a combo, SoundFlip warns you once and
@@ -67,8 +69,7 @@ it for everything:
 - **About SoundFlip** — version and links.
 - **Exit**.
 
-Double-clicking the icon cycles the output ring. Every switch shows a small
-toast with the new device name, and the icon tooltip always shows the current
+Every switch shows a small toast with the new device name, and the icon tooltip always shows the current
 output. The menu, dialogs, and toasts follow your Windows light/dark theme
 and display language.
 

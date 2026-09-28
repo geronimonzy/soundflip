@@ -195,4 +195,22 @@ public sealed class SettingsStoreTests
         Assert.Single(settings.Outputs);
         Assert.Equal("FromJson", settings.Outputs[0].Match);
     }
+
+    [Fact]
+    public void IsFirstRun_TrueOnlyWhenNoCurrentOrLegacySettingsExist()
+    {
+        using var temp = new TempDirectory();
+        string path = Path.Combine(temp.Path, "soundflip.json");
+        string legacyJson = Path.Combine(temp.Path, "audsw.json");
+        string legacyCfg = Path.Combine(temp.Path, "audsw.cfg");
+
+        Assert.True(SettingsStore.IsFirstRun(path, legacyJson, legacyCfg));
+
+        File.WriteAllText(legacyCfg, "device1 = Speakers");
+        Assert.False(SettingsStore.IsFirstRun(path, legacyJson, legacyCfg));
+
+        File.Delete(legacyCfg);
+        SettingsStore.Save(new AppSettings(), path);
+        Assert.False(SettingsStore.IsFirstRun(path, legacyJson, legacyCfg));
+    }
 }

@@ -13,7 +13,7 @@ sealed class TrayContext : ApplicationContext
     AutoStartStatus _autoStart = AutoStartStatus.Loading;
     bool? _rendererLight;
 
-    public TrayContext(AppSettings settings)
+    public TrayContext(AppSettings settings, bool firstRun = false)
     {
         _settings = settings;
 
@@ -23,7 +23,10 @@ sealed class TrayContext : ApplicationContext
             Visible = true,
             ContextMenuStrip = new ContextMenuStrip(),
         };
-        _icon.DoubleClick += (_, _) => CycleOutputs();
+        // Left-click opens the same menu as right-click: a click that does nothing
+        // reads as broken. (This replaces double-click-to-cycle, which could not
+        // coexist with it and was undiscoverable anyway.)
+        _icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowMenu(); };
         _icon.ContextMenuStrip.Opening += (_, _) => BuildMenu();
         _icon.ContextMenuStrip.Opened += (_, _) => Win11.RoundCorners(_icon.ContextMenuStrip);
         UpdateTooltip();
@@ -31,6 +34,34 @@ sealed class TrayContext : ApplicationContext
         RebindHotkeys();
         BuildMenu();
         _ = RefreshAutoStartStatusAsync(rebuildMenu: true);
+
+        if (firstRun)
+        {
+            // Persist right away so the welcome shows exactly once, however the
+            // app is closed afterwards.
+            SettingsStore.Save(_settings);
+
+            // Deferred until the message loop runs (and the tray icon exists).
+            var timer = new System.Windows.Forms.Timer { Interval = 500 };
+            timer.Tick += async (_, _) =>
+            {
+                timer.Stop();
+                timer.Dispose();
+                await ShowWelcomeAsync();
+            };
+            timer.Start();
+        }
+    }
+
+    async Task ShowWelcomeAsync()
+    {
+        _autoStart = await AutoStart.GetStatusAsync();
+        bool offerAutoStart = _autoStart.CanToggle && !_autoStart.Enabled;
+
+        if (WelcomeDialog.Show(_settings.CycleOutputs, offerAutoStart))
+            await ToggleAutoStartAsync();
+        else if (!_icon.ContextMenuStrip!.Visible)
+            BuildMenu();
     }
 
     // Re-apply the two cycle hotkeys from current settings. One warning summarizes
@@ -178,8 +209,28 @@ sealed class TrayContext : ApplicationContext
 
         if (root.DropDownItems.Count == 0)
             root.DropDownItems.Add(new ToolStripMenuItem(Str.NoActiveDevices.T()) { Enabled = false });
+        else if (ring.Count == 0)
+        {
+            // Nothing ticked means the cycle walks every active device; say so, or
+            // an all-unticked list reads as "nothing will happen".
+            root.DropDownItems.Insert(0, InfoItem(Str.CycleAllHint.T()));
+            root.DropDownItems.Insert(1, new ToolStripSeparator());
+        }
 
         return root;
+    }
+
+    // NotifyIcon's own (non-public) ShowContextMenu does what a tray menu needs:
+    // foreground activation so the menu closes when clicking elsewhere, and
+    // placement next to the tray. Fall back to a plain Show if it ever moves.
+    void ShowMenu()
+    {
+        var method = typeof(NotifyIcon).GetMethod("ShowContextMenu",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (method is not null)
+            method.Invoke(_icon, null);
+        else
+            _icon.ContextMenuStrip!.Show(Cursor.Position);
     }
 
     static bool InRing(List<DeviceEntry> ring, string deviceName) =>
@@ -261,17 +312,12 @@ sealed class TrayContext : ApplicationContext
         var ring = (output ? _settings.Outputs : _settings.Inputs)
             .Select(entry => entry.Match).ToList();
 
-        if (ring.Count == 0)
-        {
-            Notify((output ? Str.NoOutputsConfigured : Str.NoInputsConfigured).T(), Str.TickDevicesHint.T(), ToolTipIcon.Warning);
-            return;
-        }
-
         var before = Audio.CurrentDefault(_controller, kind);
         var target = Audio.CycleRing(_controller, kind, ring);
         if (target is null)
         {
-            Notify(Str.NothingToSwitch.T(), (output ? Str.NoOutputsActive : Str.NoInputsActive).T(), ToolTipIcon.Warning);
+            string detail = ring.Count == 0 ? "" : (output ? Str.NoOutputsActive : Str.NoInputsActive).T();
+            Notify(Str.NothingToSwitch.T(), detail, ToolTipIcon.Warning);
             return;
         }
 

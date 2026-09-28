@@ -66,6 +66,7 @@ internal static class CommandLine
                                            (a device named "output"/"input" needs the
                                            kind too, e.g. set output output)
           soundflip cycle [outputs|inputs] advance the chosen ring to its next device
+                                           (all active devices when none are ticked)
           soundflip daemon                 alias for launching the tray app
           soundflip export-assets <dir>    generate default Microsoft Store logo assets
           soundflip help                   show this help text

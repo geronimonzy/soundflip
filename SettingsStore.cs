@@ -46,6 +46,15 @@ static class SettingsStore
 
     public static AppSettings Load() => Load(SettingsPath, LegacyJsonPath, LegacyCfgPath);
 
+    // True on a brand-new install: no settings at the current path and nothing to
+    // migrate from the audsw era. Drives the one-time welcome window.
+    public static bool IsFirstRun() => IsFirstRun(SettingsPath, LegacyJsonPath, LegacyCfgPath);
+
+    internal static bool IsFirstRun(string path, string? legacyJsonPath, string? legacyCfgPath) =>
+        !File.Exists(path)
+        && (legacyJsonPath is null || !File.Exists(legacyJsonPath))
+        && (legacyCfgPath is null || !File.Exists(legacyCfgPath));
+
     internal static AppSettings Load(string path, string? legacyJsonPath = null, string? legacyCfgPath = null)
     {
         if (File.Exists(path))

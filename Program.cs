@@ -81,16 +81,12 @@ internal static class Program
         var ring = (kind == AudioKind.Output ? settings.Outputs : settings.Inputs)
             .Select(entry => entry.Match).ToList();
 
-        if (ring.Count == 0)
-        {
-            Console.Error.WriteLine($"no {Word(kind)} ring configured. Tick devices in the tray menu.");
-            return 1;
-        }
-
         var target = Audio.CycleRing(controller, kind, ring);
         if (target is null)
         {
-            Console.Error.WriteLine($"none of the configured {Word(kind)} devices are currently active.");
+            Console.Error.WriteLine(ring.Count == 0
+                ? $"no active {Word(kind)} devices."
+                : $"none of the configured {Word(kind)} devices are currently active.");
             return 1;
         }
 
@@ -128,8 +124,10 @@ internal static class Program
         // A corrupt settings file must not stop the tray from launching: fall
         // back to defaults and warn, rather than crashing before any UI exists.
         AppSettings settings;
+        bool firstRun = false;
         try
         {
+            firstRun = SettingsStore.IsFirstRun();
             settings = SettingsStore.Load();
             Loc.Apply(settings.Language);
         }
@@ -144,7 +142,7 @@ internal static class Program
 
         try
         {
-            Application.Run(new TrayContext(settings));
+            Application.Run(new TrayContext(settings, firstRun));
         }
         catch (Exception ex)
         {

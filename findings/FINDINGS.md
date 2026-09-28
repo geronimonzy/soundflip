@@ -25,7 +25,13 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 
 ---
 
-## F1 · After install/launch the app is invisible ✅
+## F1 · After install/launch the app is invisible ✅ · **PARTLY FIXED** on `fix/toast-messages`
+
+> One-time welcome window on first run (`WelcomeDialog.cs`): where the icon is, how
+> to keep it visible (+ *Taskbar settings* button), click/hotkey basics, optional
+> *Start with Windows*. Verified in VM at 250% incl. the autostart checkbox.
+> Still open: a second launch still exits silently (should surface the running
+> instance).
 
 - **Observed:** on a fresh Windows 11 profile the tray icon goes straight into the `^`
   overflow; the taskbar shows nothing new, no window, no notification
@@ -58,11 +64,13 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
   with `NIF_GUID` via our own `Shell_NotifyIcon` P/Invoke (GUID icons are also bound to
   a path, so behavior under MSIX needs the same test).
 
-## F3 · The "strange hint" is a context-free warning toast ✅ · **PARTLY FIXED** on `fix/toast-messages`
+## F3 · The "strange hint" is a context-free warning toast ✅ · **FIXED** on `fix/toast-messages`
 
 > Toasts now show a semibold title ("No outputs configured", "Audio output", ...) over
 > the body; warnings stay 4 s, switch confirmations 2.2 s. Verified in VM at 250%.
-> Still open: the product decision "empty ring = all active devices".
+> Empty ring now means "all active devices" (decided 2026-09-28), so the warning no
+> longer appears on a fresh install; the Output/Input submenus say "None ticked: all
+> devices are cycled". Verified in VM.
 
 - **Observed:** with nothing ticked yet (fresh install), pressing the default hotkey
   **Ctrl+Alt+O** or double-clicking the tray icon shows, bottom-center, for ~1.8 s, an
@@ -96,7 +104,10 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
   "Only one output available: X" (or "Already on X"), and don't re-set the default.
   Always show the kind ("Output → X").
 
-## F5 · Single left-click does nothing; double-click cycles 📄
+## F5 · Single left-click does nothing; double-click cycles 📄 · **FIXED** on `fix/toast-messages`
+
+> Decision: left-click opens the existing menu (not a flyout). Double-click-to-cycle
+> removed (it can't coexist with click-to-open). Verified in VM.
 
 - `TrayContext.cs:26` wires only `DoubleClick` → `CycleOutputs()`. A single left-click
   has no handler. Double-click-to-cycle is undiscoverable and, before setup, produces
@@ -174,7 +185,7 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 - **Fix direction:** a distinct glyph (speaker + swap arrows / "flip"), still Fluent style.
   Would also touch `app.ico` and Store assets (see CLAUDE.md icon note).
 
-## F10 · "Cycle input" is always clickable ✅ (minor)
+## F10 · "Cycle input" is always clickable ✅ (minor) · **RESOLVED** by empty ring = all devices
 
 - Shown and enabled even with no inputs ticked and no input hotkey; clicking gives
   the same context-free warning as F3. Grey it out or, with F3's "empty = all"
@@ -191,6 +202,18 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 - Registered on first launch although nothing is configured (F3). Conflicts are
   reported, but a silent grab of a common chord on first run is surprising. With
   F3's "empty = all" it at least becomes useful.
+
+## F13 · Slow first start right after a VM snapshot restore ✅ (test-rig artifact, low priority)
+
+- In the offline VM, right after restoring a snapshot, the first launch of a new
+  build took 23-34 s for a CLI verb and ~3 min for the tray. Trace: ~68 s before
+  `Main` (likely Defender scanning the new 188 MB single-file exe without cloud
+  access), then ~190 s inside `new NotifyIcon { Visible = true }` (Shell_NotifyIcon
+  blocking on a busy Explorer). In a settled session the whole tray startup is 275 ms.
+- Probably not user-facing, but worth one check on a real machine: enable *Start
+  with Windows*, sign out/in, and time until the icon appears.
+- Test rig: warm the exe up (`soundflip list`) and give the VM a few minutes after a
+  restore before launching the tray.
 
 ---
 
