@@ -363,7 +363,9 @@ static class HotkeysWindow
             ColumnCount = 3,
             RowCount = 2,
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi.S(104F)));
+        // Label column sizes to the text: translations like "Переключить вывод" or
+        // "Changer de sortie" were cut off in a fixed 104px column.
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi.S(80F)));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi.S(44F)));
@@ -412,6 +414,7 @@ static class HotkeysWindow
             ForeColor = Theme.Fore(light),
             TextAlign = ContentAlignment.MiddleLeft,
             Margin = Dpi.Pad(0, 0, 12, gap),
+            MinimumSize = Dpi.Sz(92, 0),   // keeps the old 104px column for short labels
         };
 
         var pick = new Win11Button(light) { Text = Show(get()), Dock = DockStyle.Fill, Margin = Dpi.Pad(0, 0, 12, gap) };
