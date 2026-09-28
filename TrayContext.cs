@@ -267,6 +267,7 @@ sealed class TrayContext : ApplicationContext
             return;
         }
 
+        var before = Audio.CurrentDefault(_controller, kind);
         var target = Audio.CycleRing(_controller, kind, ring);
         if (target is null)
         {
@@ -275,6 +276,15 @@ sealed class TrayContext : ApplicationContext
         }
 
         UpdateTooltip();
+
+        // Only one ring device is available and it is already the default: say so
+        // instead of flashing its name as if a switch had happened.
+        if (before is not null && target.Id == before.Id)
+        {
+            Notify((output ? Str.OnlyOneOutput : Str.OnlyOneInput).T(), target.FullName, ToolTipIcon.Info);
+            return;
+        }
+
         Notify((output ? Str.AudioOutput : Str.AudioInput).T(), target.FullName, ToolTipIcon.Info);
     }
 
@@ -287,19 +297,20 @@ sealed class TrayContext : ApplicationContext
     void Notify(string title, string text, ToolTipIcon kind)
     {
         bool light = Theme.IsLight;
-        Color foreground = kind switch
+        Color titleColor = kind switch
         {
             ToolTipIcon.Warning => Theme.Warning(light),
             ToolTipIcon.Error => Theme.Error(light),
             _ => Theme.Fore(light),
         };
-        string message = string.IsNullOrEmpty(text) ? title : text;
+        // Switch confirmations are glanceable; warnings are sentences to read.
+        int lifetimeMs = kind == ToolTipIcon.Info ? 2200 : 4000;
 
         var oldToast = _toast;
         _toast = null;
         oldToast?.Close();
 
-        var toast = new ToastForm(message, foreground, Theme.Back(light));
+        var toast = new ToastForm(title, text, titleColor, Theme.Fore(light), Theme.Back(light), lifetimeMs);
         toast.FormClosed += (_, _) => { if (ReferenceEquals(_toast, toast)) _toast = null; };
         _toast = toast;
         toast.Show();

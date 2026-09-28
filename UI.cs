@@ -306,35 +306,46 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
 }
 
 // A small, silent, self-dismissing pill near the bottom-center of the active
-// screen. It uses a layered window for smooth corners and translucency.
+// screen: a semibold title line (normal text color for info, amber for warnings,
+// red for errors) over an optional body line. It uses a layered window for smooth
+// corners and translucency.
 sealed class ToastForm : Form
 {
     // Shared across every toast for the app's lifetime: WinForms never disposes a
-    // Font assigned to a control, so a per-instance Font here would leak GDI
+    // Font assigned to a control, so per-instance Fonts here would leak GDI
     // handles on every notification.
-    static readonly Font ToastFont = new("Segoe UI", 10.5F);
+    static readonly Font TitleFont = new("Segoe UI Semibold", 10.5F);
+    static readonly Font BodyFont = new("Segoe UI", 10.5F);
 
-    readonly System.Windows.Forms.Timer _life = new() { Interval = 1800 };
-    readonly string _message;
-    readonly Color _foreground;
+    readonly System.Windows.Forms.Timer _life;
+    readonly string _title;
+    readonly string _body;
+    readonly Color _titleColor;
+    readonly Color _bodyColor;
     readonly Color _background;
+    readonly SizeF _titleSize;
+    readonly SizeF _bodySize;
 
     static readonly int Radius = Dpi.S(9);
     static readonly int PaddingX = Dpi.S(28);
-    static readonly int PaddingY = Dpi.S(16);
+    static readonly int PaddingY = Dpi.S(14);
+    static readonly int LineGap = Dpi.S(2);
     static readonly int MaxTextWidth = Dpi.S(480);
 
-    public ToastForm(string message, Color foreground, Color background)
+    public ToastForm(string title, string body, Color titleColor, Color bodyColor, Color background, int lifetimeMs)
     {
-        _message = message;
-        _foreground = foreground;
+        _title = title;
+        _body = body;
+        _titleColor = titleColor;
+        _bodyColor = bodyColor;
         _background = background;
+        _life = new System.Windows.Forms.Timer { Interval = lifetimeMs };
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
-        Font = ToastFont;
+        Font = BodyFont;
 
         // Measure with the same GDI+ engine and StringFormat used for drawing.
         // GDI (TextRenderer) wraps at different points than GDI+ (DrawString), so
@@ -342,10 +353,13 @@ sealed class ToastForm : Form
         using var format = TextFormat();
         using var probe = Graphics.FromHwnd(IntPtr.Zero);
         probe.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-        var measured = probe.MeasureString(_message, Font, MaxTextWidth, format);
+        _titleSize = probe.MeasureString(_title, TitleFont, MaxTextWidth, format);
+        _bodySize = _body.Length == 0 ? SizeF.Empty : probe.MeasureString(_body, BodyFont, MaxTextWidth, format);
 
-        Width = Math.Max((int)MathF.Ceiling(measured.Width) + PaddingX * 2 + 2, Dpi.S(180));
-        Height = Math.Max((int)MathF.Ceiling(measured.Height) + PaddingY * 2 + 2, Dpi.S(56));
+        float textWidth = Math.Max(_titleSize.Width, _bodySize.Width);
+        float textHeight = _titleSize.Height + (_body.Length == 0 ? 0 : LineGap + _bodySize.Height);
+        Width = Math.Max((int)MathF.Ceiling(textWidth) + PaddingX * 2 + 2, Dpi.S(180));
+        Height = Math.Max((int)MathF.Ceiling(textHeight) + PaddingY * 2 + 2, Dpi.S(56));
 
         var screen = Screen.FromPoint(Cursor.Position);
         var area = screen.WorkingArea;
@@ -363,7 +377,7 @@ sealed class ToastForm : Form
     static StringFormat TextFormat() => new()
     {
         Alignment = StringAlignment.Center,
-        LineAlignment = StringAlignment.Center,
+        LineAlignment = StringAlignment.Near,
     };
 
     protected override bool ShowWithoutActivation => true;
@@ -424,14 +438,23 @@ sealed class ToastForm : Form
 
             // No LineLimit: the window was sized from an exact measurement, and
             // LineLimit would drop the whole last line on a 1px rounding shortfall.
+            // The text block is centered vertically; each line is centered
+            // horizontally by the StringFormat.
             using var stringFormat = TextFormat();
-            using var textBrush = new SolidBrush(_foreground);
-            g.DrawString(
-                _message,
-                Font,
-                textBrush,
-                new RectangleF(PaddingX, PaddingY, Width - PaddingX * 2, Height - PaddingY * 2),
-                stringFormat);
+            float textHeight = _titleSize.Height + (_body.Length == 0 ? 0 : LineGap + _bodySize.Height);
+            float top = (Height - textHeight) / 2F;
+            float width = Width - PaddingX * 2;
+
+            using (var titleBrush = new SolidBrush(_titleColor))
+                g.DrawString(_title, TitleFont, titleBrush,
+                    new RectangleF(PaddingX, top, width, _titleSize.Height), stringFormat);
+
+            if (_body.Length > 0)
+            {
+                using var bodyBrush = new SolidBrush(_bodyColor);
+                g.DrawString(_body, BodyFont, bodyBrush,
+                    new RectangleF(PaddingX, top + _titleSize.Height + LineGap, width, _bodySize.Height), stringFormat);
+            }
         }
 
         PushLayered(bitmap);

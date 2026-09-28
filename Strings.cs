@@ -19,7 +19,7 @@ enum Str
     AutostartEnabledTitle, AutostartEnabledText, AutostartDisabledTitle, AutostartDisabledText,
     AutostartUnavailable,
     NoOutputsConfigured, NoInputsConfigured, TickDevicesHint,
-    NothingToSwitch, NoOutputsActive, NoInputsActive, AudioOutput, AudioInput,
+    NothingToSwitch, NoOutputsActive, NoInputsActive, AudioOutput, AudioInput, OnlyOneOutput, OnlyOneInput,
 
     // Hotkey dialogs
     SetHotkeyTitle, PressNewShortcut, CurrentHotkey, HotkeyHint, WaitingForShortcut, NeedModifier,
@@ -150,6 +150,8 @@ static class Loc
             [Str.NoInputsActive] = "None of the configured inputs are currently active.",
             [Str.AudioOutput] = "Audio output",
             [Str.AudioInput] = "Audio input",
+            [Str.OnlyOneOutput] = "Only one output to cycle",
+            [Str.OnlyOneInput] = "Only one input to cycle",
 
             [Str.SetHotkeyTitle] = "Set hotkey",
             [Str.PressNewShortcut] = "Press a new shortcut",
@@ -223,6 +225,8 @@ static class Loc
             [Str.NoInputsActive] = "Keines der konfigurierten Eingabegeräte ist derzeit aktiv.",
             [Str.AudioOutput] = "Audioausgabe",
             [Str.AudioInput] = "Audioeingabe",
+            [Str.OnlyOneOutput] = "Nur ein Ausgabegerät zum Wechseln",
+            [Str.OnlyOneInput] = "Nur ein Eingabegerät zum Wechseln",
 
             [Str.SetHotkeyTitle] = "Tastenkürzel festlegen",
             [Str.PressNewShortcut] = "Neues Tastenkürzel drücken",
@@ -296,6 +300,8 @@ static class Loc
             [Str.NoInputsActive] = "Ninguna de las entradas configuradas está activa en este momento.",
             [Str.AudioOutput] = "Salida de audio",
             [Str.AudioInput] = "Entrada de audio",
+            [Str.OnlyOneOutput] = "Solo hay una salida para alternar",
+            [Str.OnlyOneInput] = "Solo hay una entrada para alternar",
 
             [Str.SetHotkeyTitle] = "Definir atajo",
             [Str.PressNewShortcut] = "Pulsa un nuevo atajo",
@@ -369,6 +375,8 @@ static class Loc
             [Str.NoInputsActive] = "Aucune des entrées configurées n'est active actuellement.",
             [Str.AudioOutput] = "Sortie audio",
             [Str.AudioInput] = "Entrée audio",
+            [Str.OnlyOneOutput] = "Une seule sortie à alterner",
+            [Str.OnlyOneInput] = "Une seule entrée à alterner",
 
             [Str.SetHotkeyTitle] = "Définir le raccourci",
             [Str.PressNewShortcut] = "Appuyez sur un nouveau raccourci",
@@ -442,6 +450,8 @@ static class Loc
             [Str.NoInputsActive] = "Ни одно из настроенных устройств ввода сейчас не активно.",
             [Str.AudioOutput] = "Аудиовывод",
             [Str.AudioInput] = "Аудиоввод",
+            [Str.OnlyOneOutput] = "Для переключения доступно только одно устройство вывода",
+            [Str.OnlyOneInput] = "Для переключения доступно только одно устройство ввода",
 
             [Str.SetHotkeyTitle] = "Назначить горячую клавишу",
             [Str.PressNewShortcut] = "Нажмите новое сочетание клавиш",
