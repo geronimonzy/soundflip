@@ -108,8 +108,10 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 
 ## F5 · Single left-click does nothing; double-click cycles 📄 · **FIXED** on `fix/toast-messages`
 
-> Decision: left-click opens the existing menu (not a flyout). Double-click-to-cycle
-> removed (it can't coexist with click-to-open). Verified in VM.
+> Decision: left-click opens the existing menu (not a flyout); double-click still
+> cycles. The left-click menu waits the system double-click time (~0.5 s) so the two
+> can coexist; the cycle is posted, not run inside the double-click handler (running
+> it inline let NotifyIcon swallow the next single click). Verified in VM.
 
 - `TrayContext.cs:26` wires only `DoubleClick` → `CycleOutputs()`. A single left-click
   has no handler. Double-click-to-cycle is undiscoverable and, before setup, produces
@@ -169,7 +171,10 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 - **Verify in VM:** `Restore-TestVM audio-250` → open About / Hotkeys / Set hotkey,
   cycle toast; also at 100%, 150%, 200%.
 
-## F8 · Tooltip goes stale when the default changes elsewhere ✅
+## F8 · Tooltip goes stale when the default changes elsewhere ✅ · **FIXED** on `fix/toast-messages`
+
+> Subscribes to `CoreAudioController.AudioDeviceChanged` (default/state/add/remove);
+> tooltip now shows app / output / input. Verified in VM after a CLI switch.
 
 - **Observed:** changed the default output outside SoundFlip (via `soundflip set`; same
   as Windows Settings/other apps); tray tooltip still said the old device
@@ -193,7 +198,9 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
   the same context-free warning as F3. Grey it out or, with F3's "empty = all"
   default, just make it work.
 
-## F11 · Redundant startup hint line ✅ (minor)
+## F11 · Redundant startup hint line ✅ (minor) · **FIXED** on `fix/toast-messages`
+
+> The status line is shown only when the toggle can't be used.
 
 - Under "Start with Windows" the menu shows a disabled line "Enable startup from the
   tray menu.", which is the item right above it (`AutoStart.cs:100`,

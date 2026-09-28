@@ -12,7 +12,7 @@ enum Str
     // Tray menu
     MenuOutputCurrent, MenuInputCurrent, NoDefaultOutput, NoDefaultInput,
     CycleOutput, CycleInput, Output, Input, NoActiveDevices, CycleAllHint,
-    Hotkeys, Language, LanguageSystem, StartWithWindows, About, Exit, Unknown,
+    Hotkeys, Language, LanguageSystem, StartWithWindows, About, Exit,
 
     // Toasts
     HotkeysInUseTitle, HotkeysInUseText,
@@ -145,7 +145,6 @@ static class Loc
             [Str.StartWithWindows] = "Start with Windows",
             [Str.About] = "About {0}",
             [Str.Exit] = "Exit",
-            [Str.Unknown] = "unknown",
 
             [Str.HotkeysInUseTitle] = "Some hotkeys are in use",
             [Str.HotkeysInUseText] = "Could not register: {0}",
@@ -226,7 +225,6 @@ static class Loc
             [Str.StartWithWindows] = "Mit Windows starten",
             [Str.About] = "Über {0}",
             [Str.Exit] = "Beenden",
-            [Str.Unknown] = "unbekannt",
 
             [Str.HotkeysInUseTitle] = "Einige Tastenkürzel sind belegt",
             [Str.HotkeysInUseText] = "Konnte nicht registriert werden: {0}",
@@ -307,7 +305,6 @@ static class Loc
             [Str.StartWithWindows] = "Iniciar con Windows",
             [Str.About] = "Acerca de {0}",
             [Str.Exit] = "Salir",
-            [Str.Unknown] = "desconocido",
 
             [Str.HotkeysInUseTitle] = "Algunos atajos ya están en uso",
             [Str.HotkeysInUseText] = "No se pudo registrar: {0}",
@@ -388,7 +385,6 @@ static class Loc
             [Str.StartWithWindows] = "Lancer avec Windows",
             [Str.About] = "À propos de {0}",
             [Str.Exit] = "Quitter",
-            [Str.Unknown] = "inconnu",
 
             [Str.HotkeysInUseTitle] = "Certains raccourcis sont déjà utilisés",
             [Str.HotkeysInUseText] = "Impossible d'enregistrer : {0}",
@@ -469,7 +465,6 @@ static class Loc
             [Str.StartWithWindows] = "Запускать вместе с Windows",
             [Str.About] = "О программе {0}",
             [Str.Exit] = "Выход",
-            [Str.Unknown] = "неизвестно",
 
             [Str.HotkeysInUseTitle] = "Некоторые горячие клавиши заняты",
             [Str.HotkeysInUseText] = "Не удалось зарегистрировать: {0}",

@@ -113,16 +113,9 @@ static class WelcomeDialog
             Anchor = AnchorStyles.Left,
             Margin = Dpi.Pad(0, 0, 12, 0),
         };
-        var languageBox = new ComboBox
-        {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Width = Dpi.S(200),
-            BackColor = Theme.Content(light),
-            ForeColor = Theme.Fore(light),
-            Margin = Padding.Empty,
-        };
+        var languageBox = new Win11DropDown<string>(light, Dpi.S(200));
         languageRow.Controls.Add(languageLabel, 0, 0);
-        languageRow.Controls.Add(languageBox, 1, 0);
+        languageRow.Controls.Add(languageBox.Button, 1, 0);
         body.Controls.Add(languageRow);
 
         CheckBox? startup = null;
@@ -159,7 +152,6 @@ static class WelcomeDialog
         form.CancelButton = ok;
 
         // All visible text, so a language change can simply re-run it.
-        bool fillingLanguages = false;
         void ApplyTexts()
         {
             form.Text = Str.WelcomeTitle.T();
@@ -175,24 +167,21 @@ static class WelcomeDialog
             taskbar.Width = Math.Max(minButtonWidth, TextRenderer.MeasureText(taskbar.Text, form.Font).Width + Dpi.S(28));
 
             // "System default" is itself translated, so refill the list in place.
-            fillingLanguages = true;
-            string selected = (languageBox.SelectedItem as LanguageChoice)?.Code ?? Loc.Normalize(language);
-            languageBox.Items.Clear();
-            languageBox.Items.Add(new LanguageChoice(Loc.Auto, Str.LanguageSystem.T()));
-            foreach (var code in Loc.Supported) languageBox.Items.Add(new LanguageChoice(code, Loc.NativeName(code)));
-            languageBox.SelectedItem = languageBox.Items.Cast<LanguageChoice>().First(choice => choice.Code == selected);
-            fillingLanguages = false;
+            var choices = new List<(string, string)> { (Loc.Auto, Str.LanguageSystem.T()) };
+            choices.AddRange(Loc.Supported.Select(code => (code, Loc.NativeName(code))));
+            languageBox.SetItems(choices, languageBox.Selected ?? Loc.Normalize(language));
 
             // Text length varies a lot between languages: size the window to its content.
             if (form.IsHandleCreated)
                 form.ClientSize = new Size(form.ClientSize.Width, body.PreferredSize.Height + footer.Height);
         }
 
-        languageBox.SelectedIndexChanged += (_, _) =>
+        languageBox.SelectionChanged += code =>
         {
-            if (fillingLanguages || languageBox.SelectedItem is not LanguageChoice choice) return;
-            onLanguageChanged(choice.Code);
-            ApplyTexts();
+            onLanguageChanged(code);
+            // Re-render after the menu click completes: ApplyTexts rebuilds the
+            // drop-down's items, including the one being clicked.
+            form.BeginInvoke(ApplyTexts);
         };
 
         ApplyTexts();
@@ -200,11 +189,6 @@ static class WelcomeDialog
 
         form.ShowDialog();
         return startup?.Checked == true;
-    }
-
-    sealed record LanguageChoice(string Code, string Label)
-    {
-        public override string ToString() => Label;
     }
 
     static Label Paragraph(int width, int bottomMargin) => new()

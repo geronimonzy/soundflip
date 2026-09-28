@@ -129,6 +129,10 @@ sealed class Win11Button : Button
 
     public bool Accent { get; init; }
 
+    // Drop-down look: left-aligned text plus a chevron on the right. Pair with a
+    // ContextMenuStrip (see Win11DropDown) for a Win11-style selector.
+    public bool Chevron { get; init; }
+
     public Win11Button(bool light)
     {
         _light = light;
@@ -163,8 +167,30 @@ sealed class Win11Button : Button
             g.DrawPath(pen, path);
         }
 
-        TextRenderer.DrawText(g, Text, Font, ClientRectangle, TextColor(),
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        if (!Chevron)
+        {
+            TextRenderer.DrawText(g, Text, Font, ClientRectangle, TextColor(),
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            return;
+        }
+
+        int pad = Dpi.S(11);
+        int glyph = Dpi.S(10);
+        var textRect = new Rectangle(pad, 0, Width - pad * 2 - glyph - Dpi.S(6), Height);
+        TextRenderer.DrawText(g, Text, Font, textRect, TextColor(),
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+
+        // Chevron-down, stroked like the Fluent "ChevronDown" glyph.
+        float cx = Width - pad - glyph / 2F;
+        float cy = Height / 2F;
+        float half = glyph / 2F;
+        using var chevron = new Pen(TextColor(), Dpi.S(1.3F)) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+        g.DrawLines(chevron, new[]
+        {
+            new PointF(cx - half, cy - half / 2F),
+            new PointF(cx, cy + half / 2F),
+            new PointF(cx + half, cy - half / 2F),
+        });
     }
 
     Color FillColor()
@@ -182,6 +208,61 @@ sealed class Win11Button : Button
 
     Color TextColor() =>
         !Enabled ? Theme.Disabled(_light) : Accent ? Color.White : Theme.Fore(_light);
+}
+
+// Win11-style selector: a chevron button that opens a menu (drawn by the shared
+// ModernMenuRenderer, so it matches the tray menu) listing the choices, with a
+// check on the selected one. Raises SelectionChanged with the chosen value.
+sealed class Win11DropDown<T>
+{
+    readonly List<(T Value, string Label)> _items = new();
+    readonly ContextMenuStrip _menu = new();
+
+    public Win11Button Button { get; }
+    public T? Selected { get; private set; }
+    public event Action<T>? SelectionChanged;
+
+    public Win11DropDown(bool light, int width)
+    {
+        Button = new Win11Button(light) { Chevron = true, Width = width, Margin = Padding.Empty };
+        _menu.BackColor = Theme.Back(light);
+        _menu.ForeColor = Theme.Fore(light);
+        _menu.Opened += (_, _) => Win11.RoundCorners(_menu);
+        Button.Click += (_, _) =>
+        {
+            _menu.MinimumSize = new Size(Button.Width, 0);
+            _menu.Show(Button, new Point(0, Button.Height + Dpi.S(2)));
+        };
+        Button.Disposed += (_, _) => _menu.Dispose();
+    }
+
+    // Replace the choices (e.g. after a language change re-translates a label).
+    public void SetItems(IEnumerable<(T Value, string Label)> items, T selected)
+    {
+        _items.Clear();
+        _items.AddRange(items);
+        foreach (var item in _menu.Items.Cast<ToolStripItem>().ToArray()) item.Dispose();
+        _menu.Items.Clear();
+        foreach (var (value, label) in _items)
+        {
+            var entry = new ToolStripMenuItem(label);
+            entry.Click += (_, _) => Select(value, raise: true);
+            _menu.Items.Add(entry);
+        }
+        Select(selected, raise: false);
+    }
+
+    void Select(T value, bool raise)
+    {
+        Selected = value;
+        for (int i = 0; i < _items.Count; i++)
+        {
+            bool match = EqualityComparer<T>.Default.Equals(_items[i].Value, value);
+            ((ToolStripMenuItem)_menu.Items[i]).Checked = match;
+            if (match) Button.Text = _items[i].Label;
+        }
+        if (raise) SelectionChanged?.Invoke(value);
+    }
 }
 
 // Bottom action strip of a Win11-style dialog: a slightly darker band with a

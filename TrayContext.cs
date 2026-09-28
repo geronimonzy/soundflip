@@ -10,6 +10,9 @@ sealed class TrayContext : ApplicationContext
     readonly NotifyIcon _icon;
     readonly HotkeyManager _hotkeys = new();
     ToastForm? _toast;
+    readonly System.Windows.Forms.Timer _clickTimer = new() { Interval = SystemInformation.DoubleClickTime };
+    readonly SynchronizationContext _ui;
+    readonly IDisposable _deviceChanges;
     AutoStartStatus _autoStart = AutoStartStatus.Loading;
     bool? _rendererLight;
 
@@ -23,13 +26,47 @@ sealed class TrayContext : ApplicationContext
             Visible = true,
             ContextMenuStrip = new ContextMenuStrip(),
         };
-        // Left-click opens the same menu as right-click: a click that does nothing
-        // reads as broken. (This replaces double-click-to-cycle, which could not
-        // coexist with it and was undiscoverable anyway.)
-        _icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowMenu(); };
+        // The WinForms context exists once a control does (the ContextMenuStrip).
+        _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
+
+        // Left-click opens the same menu as right-click (a click that does nothing
+        // reads as broken); double-click cycles outputs. Windows reports the first
+        // click of a double-click as a plain click, so the menu waits out the
+        // system double-click time and is cancelled if a second click arrives.
+        _clickTimer.Tick += (_, _) =>
+        {
+            _clickTimer.Stop();
+            ShowMenu();
+        };
+        _icon.MouseClick += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Left) return;
+            _clickTimer.Stop();
+            _clickTimer.Start();
+        };
+        _icon.MouseDoubleClick += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Left) return;
+            _clickTimer.Stop();
+            // Deferred, not run inline: cycling pumps messages (COM, the toast), and
+            // if the double-click's button-up is handled re-entrantly inside this
+            // handler, NotifyIcon's own double-click tracking ends up swallowing the
+            // user's next single click.
+            _ui.Post(_ => CycleOutputs(), null);
+        };
         _icon.ContextMenuStrip.Opening += (_, _) => BuildMenu();
         _icon.ContextMenuStrip.Opened += (_, _) => Win11.RoundCorners(_icon.ContextMenuStrip);
         UpdateTooltip();
+
+        // Keep the tooltip true when the default changes outside SoundFlip (Windows
+        // Settings, other apps, the CLI). Notifications arrive on a COM thread;
+        // hop to the UI thread.
+        _deviceChanges = _controller.AudioDeviceChanged.Subscribe(new DeviceChangeObserver(change =>
+        {
+            if (change.ChangedType is DeviceChangedType.DefaultChanged or DeviceChangedType.StateChanged
+                or DeviceChangedType.DeviceAdded or DeviceChangedType.DeviceRemoved)
+                _ui.Post(_ => UpdateTooltip(), null);
+        }));
 
         RebindHotkeys();
         BuildMenu();
@@ -134,7 +171,10 @@ sealed class TrayContext : ApplicationContext
             Enabled = _autoStart.CanToggle,
         };
         menu.Items.Add(autostart);
-        if (!string.IsNullOrWhiteSpace(_autoStart.Detail))
+        // Only explain the toggle when it can't be used (policy, disabled in
+        // Windows, errors, still checking); next to a working checkbox the hint
+        // just repeats it.
+        if (!_autoStart.CanToggle && !string.IsNullOrWhiteSpace(_autoStart.Detail))
             menu.Items.Add(InfoItem(_autoStart.Detail));
 
         menu.Items.Add(new ToolStripSeparator());
@@ -336,8 +376,9 @@ sealed class TrayContext : ApplicationContext
 
     void UpdateTooltip()
     {
-        string current = Audio.CurrentDefault(_controller, AudioKind.Output)?.FullName ?? Str.Unknown.T();
-        _icon.Text = Truncate(AppMetadata.ProductName + " - " + current, 63);
+        string output = Audio.CurrentDefault(_controller, AudioKind.Output)?.FullName ?? Str.NoDefaultOutput.T();
+        string input = Audio.CurrentDefault(_controller, AudioKind.Input)?.FullName ?? Str.NoDefaultInput.T();
+        _icon.Text = TooltipText(output, input);
     }
 
     void Notify(string title, string text, ToolTipIcon kind)
@@ -373,6 +414,8 @@ sealed class TrayContext : ApplicationContext
         if (disposing)
         {
             _toast?.Close();
+            _clickTimer.Dispose();
+            _deviceChanges.Dispose();
             _hotkeys.Dispose();
             var icon = _icon.Icon;
             _icon.Dispose();
@@ -387,6 +430,28 @@ sealed class TrayContext : ApplicationContext
 
     static string CycleLabel(string label, string hotkey) =>
         string.IsNullOrWhiteSpace(hotkey) ? label : $"{label}  ({hotkey})";
+
+    // Three lines: app name, output, input. NotifyIcon.Text is capped at 127
+    // characters, so device names are shortened until it fits.
+    static string TooltipText(string output, string input)
+    {
+        for (int max = 60; ; max -= 4)
+        {
+            string text = AppMetadata.ProductName
+                + "\n" + Str.MenuOutputCurrent.T(Truncate(output, max))
+                + "\n" + Str.MenuInputCurrent.T(Truncate(input, max));
+            if (text.Length <= 127) return text;
+            if (max <= 12) return text[..127];
+        }
+    }
+
+    // Plain IObserver so the AudioSwitcher observable needs no Rx dependency.
+    sealed class DeviceChangeObserver(Action<DeviceChangedArgs> onNext) : IObserver<DeviceChangedArgs>
+    {
+        public void OnNext(DeviceChangedArgs value) => onNext(value);
+        public void OnError(Exception error) { }
+        public void OnCompleted() { }
+    }
 
     static string Truncate(string text, int max) => text.Length <= max ? text : text[..(max - 3)] + "...";
 }

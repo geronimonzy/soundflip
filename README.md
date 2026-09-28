@@ -69,8 +69,9 @@ Click it for everything:
 - **About SoundFlip** — version and links.
 - **Exit**.
 
-Every switch shows a small toast with the new device name, and the icon tooltip always shows the current
-output. The menu, dialogs, and toasts follow your Windows light/dark theme
+Double-clicking the icon cycles outputs. Every switch shows a small toast with
+the new device name, and the icon tooltip always shows the current output
+and input, even when they change outside SoundFlip. The menu, dialogs, and toasts follow your Windows light/dark theme
 and display language.
 
 <p align="center">
