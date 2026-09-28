@@ -13,3 +13,4 @@ image-*.png
 /DEPLOYMENT.md
 /TESTING.md
 /Store/listings
+tools/testvm/unattend.iso
