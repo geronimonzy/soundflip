@@ -1,0 +1,5 @@
+{
+  "DeviceName": "Realtek(R) Audio",
+  "Render":  { "CABLE Input": ["Speakers", "Realtek(R) Audio"], "CABLE In 16ch": ["Headset", "Realtek(R) Audio"] },
+  "Capture": { "CABLE Output": ["Microphone", "Realtek(R) Audio"] }
+}

@@ -27,7 +27,7 @@ static class AboutDialog
             MinimizeBox = false,
             ShowIcon = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(470, 312),
+            ClientSize = Dpi.Sz(470, 312),
             BackColor = Theme.Content(light),
             ForeColor = Theme.Fore(light),
             Font = MakeFont("Segoe UI", 9.5F),
@@ -35,7 +35,7 @@ static class AboutDialog
 
         form.Shown += (_, _) => Win11.ApplyChrome(form, light);
 
-        var iconImage = TrayArt.SpeakerBitmap(56);
+        var iconImage = TrayArt.SpeakerBitmap(Dpi.S(56));
         form.FormClosed += (_, _) =>
         {
             iconImage.Dispose();
@@ -45,7 +45,7 @@ static class AboutDialog
         var shell = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(24, 20, 24, 0),
+            Padding = Dpi.Pad(24, 20, 24, 0),
             ColumnCount = 1,
             RowCount = 1,
         };
@@ -57,13 +57,13 @@ static class AboutDialog
             ColumnCount = 2,
             RowCount = 1,
         };
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 76F));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi.S(76F)));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
         var iconBox = new PictureBox
         {
-            Size = new Size(56, 56),
-            Margin = new Padding(0, 2, 16, 0),
+            Size = Dpi.Sz(56, 56),
+            Margin = Dpi.Pad(0, 2, 16, 0),
             Image = iconImage,
             SizeMode = PictureBoxSizeMode.CenterImage,
         };
@@ -81,22 +81,22 @@ static class AboutDialog
             AutoSize = true,
             Font = MakeFont("Segoe UI Semibold", 13F),
             Text = AppMetadata.ProductName,
-            Margin = new Padding(0, 0, 0, 4),
+            Margin = Dpi.Pad(0, 0, 0, 4),
         });
         body.Controls.Add(new Label
         {
             AutoSize = true,
             Font = MakeFont("Segoe UI", 9.5F),
             Text = Str.AboutVersion.T(AppMetadata.VersionText),
-            Margin = new Padding(0, 0, 0, 12),
+            Margin = Dpi.Pad(0, 0, 0, 12),
         });
         body.Controls.Add(new Label
         {
             AutoSize = true,
             Font = MakeFont("Segoe UI", 9.5F),
-            MaximumSize = new Size(340, 0),
+            MaximumSize = Dpi.Sz(340, 0),
             Text = Str.AppDescription.T(),
-            Margin = new Padding(0, 0, 0, 12),
+            Margin = Dpi.Pad(0, 0, 0, 12),
         });
         body.Controls.Add(InfoLine(Str.Publisher.T(), AppMetadata.Company, MakeFont));
         body.Controls.Add(InfoLine(Str.Copyright.T(), AppMetadata.Copyright, MakeFont));
@@ -109,10 +109,10 @@ static class AboutDialog
             {
                 AutoSize = true,
                 Font = MakeFont("Segoe UI", 9F),
-                MaximumSize = new Size(340, 0),
+                MaximumSize = Dpi.Sz(340, 0),
                 ForeColor = Theme.Warning(light),
                 Text = notice,
-                Margin = new Padding(0, 12, 0, 0),
+                Margin = Dpi.Pad(0, 12, 0, 0),
             });
         }
 
@@ -141,9 +141,9 @@ static class AboutDialog
     {
         AutoSize = true,
         Font = makeFont("Segoe UI", 9F),
-        MaximumSize = new Size(340, 0),
+        MaximumSize = Dpi.Sz(340, 0),
         Text = $"{label}: {ValueOrFallback(value)}",
-        Margin = new Padding(0, 0, 0, 4),
+        Margin = Dpi.Pad(0, 0, 0, 4),
     };
 
     static Button ActionButton(string label, string url, IWin32Window? owner, bool light)

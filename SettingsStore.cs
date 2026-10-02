@@ -19,6 +19,10 @@ sealed class AppSettings
     // UI language: "auto" follows the Windows display language, otherwise one of
     // Loc.Supported ("en", "de", ...). Unknown values behave like "auto".
     public string Language { get; set; } = Loc.Auto;
+
+    // App version for which the "tray pin lost in the update" notice was shown,
+    // so it appears at most once per update.
+    public string PinNoticeShownFor { get; set; } = "";
 }
 
 static class SettingsStore
@@ -45,6 +49,15 @@ static class SettingsStore
     public static string LegacyCfgPath => Path.Combine(LegacyDirectory, "audsw.cfg");
 
     public static AppSettings Load() => Load(SettingsPath, LegacyJsonPath, LegacyCfgPath);
+
+    // True on a brand-new install: no settings at the current path and nothing to
+    // migrate from the audsw era. Drives the one-time welcome window.
+    public static bool IsFirstRun() => IsFirstRun(SettingsPath, LegacyJsonPath, LegacyCfgPath);
+
+    internal static bool IsFirstRun(string path, string? legacyJsonPath, string? legacyCfgPath) =>
+        !File.Exists(path)
+        && (legacyJsonPath is null || !File.Exists(legacyJsonPath))
+        && (legacyCfgPath is null || !File.Exists(legacyCfgPath));
 
     internal static AppSettings Load(string path, string? legacyJsonPath = null, string? legacyCfgPath = null)
     {

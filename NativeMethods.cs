@@ -28,6 +28,13 @@ static class NativeMethods
     [DllImport("user32.dll")]
     internal static extern bool DestroyIcon(IntPtr hIcon);
 
+    // Lets another process take the foreground; a second launch grants it to the
+    // running tray instance so its menu can come to the front.
+    internal const int ASFW_ANY = -1;
+
+    [DllImport("user32.dll")]
+    internal static extern bool AllowSetForegroundWindow(int dwProcessId);
+
     // Windows display language as a LANGID; the primary language lives in the
     // low 10 bits. Used instead of CultureInfo because InvariantGlobalization is on.
     [DllImport("kernel32.dll")]

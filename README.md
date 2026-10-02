@@ -49,13 +49,16 @@ print into the terminal they were started from.
 
 ## Tray app
 
-Run `soundflip` — a speaker icon appears in the notification area. Right-click
-it for everything:
+Run `soundflip` — a speaker icon appears in the notification area (on first
+launch a short welcome explains where to find it and how to keep it visible;
+launching it again while it runs points you back to it).
+Click it for everything:
 
 - **Cycle output / Cycle input** — jump to the next device in the ring.
-- **Output / Input** — live checklists of your active devices. Tick the ones
+- **Outputs in cycle / Inputs in cycle** — live checklists of your active devices. Tick the ones
   you want in the cycle ring (the menu stays open so you can tick several);
-  ● marks the current default. Changes take effect immediately.
+  with nothing ticked, cycling walks every active device. ● marks the current
+  default. Changes take effect immediately.
 - **Hotkeys…** — set both cycle hotkeys in one window. Defaults to
   `Ctrl+Alt+O` for outputs; combos are any modifiers plus a letter, digit, or
   F-key. If another app already owns a combo, SoundFlip warns you once and
@@ -67,9 +70,9 @@ it for everything:
 - **About SoundFlip** — version and links.
 - **Exit**.
 
-Double-clicking the icon cycles the output ring. Every switch shows a small
-toast with the new device name, and the icon tooltip always shows the current
-output. The menu, dialogs, and toasts follow your Windows light/dark theme
+Double-clicking the icon cycles outputs. Every switch shows a small toast with
+the new device name, and the icon tooltip always shows the current output
+and input, even when they change outside SoundFlip. The menu, dialogs, and toasts follow your Windows light/dark theme
 and display language.
 
 <p align="center">
@@ -104,6 +107,6 @@ telemetry, no network access; settings live in one local JSON file. See
 
 ## Credits
 
-The speaker icon is the "Speaker 2" glyph from
+The icon combines the "Speaker 2" and "Arrow Sync Circle" glyphs from
 [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)
 by Microsoft, used under the MIT license.

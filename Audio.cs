@@ -42,18 +42,22 @@ static class Audio
 
     // --- Ring cycling over N configured devices of one kind ---
 
-    // Advance to the next resolvable device after the current default. Returns the
-    // device switched to, or null if fewer than one ring entry resolves.
+    // Advance to the next resolvable device after the current default. An empty
+    // ring means "every active device" (in name order, as the menu lists them), so
+    // cycling works before anything is ticked. Returns the device switched to, or
+    // null if nothing resolves.
     public static CoreAudioDevice? CycleRing(CoreAudioController controller, AudioKind kind, IReadOnlyList<string> ring)
     {
-        var resolved = ring
-            .Select(match => Resolve(controller, kind, match))
-            .Where(device => device is not null)
-            .Select(device => device!)
-            // Two ring entries can resolve to the same device; collapse them (first
-            // occurrence wins) so the cycle never degenerates into a no-op.
-            .DistinctBy(device => device.Id)
-            .ToList();
+        var resolved = ring.Count == 0
+            ? Devices(controller, kind).OrderBy(device => device.FullName, StringComparer.OrdinalIgnoreCase).ToList()
+            : ring
+                .Select(match => Resolve(controller, kind, match))
+                .Where(device => device is not null)
+                .Select(device => device!)
+                // Two ring entries can resolve to the same device; collapse them (first
+                // occurrence wins) so the cycle never degenerates into a no-op.
+                .DistinctBy(device => device.Id)
+                .ToList();
 
         if (resolved.Count == 0) return null;
 

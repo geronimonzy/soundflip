@@ -54,6 +54,27 @@ static class Gfx
     }
 }
 
+// Every pixel constant in the UI is authored at 96 DPI (100% scaling). The process
+// is system-DPI-aware and forms are built in code with AutoScaleMode.None, so fonts
+// (sized in points) follow the display scale but raw pixel sizes don't: route
+// every size, padding and margin through S() so layouts grow with the text.
+static class Dpi
+{
+    static readonly float Factor = ReadFactor();
+
+    static float ReadFactor()
+    {
+        using var g = Graphics.FromHwnd(IntPtr.Zero);
+        return g.DpiX / 96F;
+    }
+
+    public static int S(int px) => (int)Math.Round(px * Factor);
+    public static float S(float px) => px * Factor;
+    public static Size Sz(int width, int height) => new(S(width), S(height));
+    public static Padding Pad(int left, int top, int right, int bottom) => new(S(left), S(top), S(right), S(bottom));
+    public static Padding Pad(int all) => new(S(all));
+}
+
 static class Win11
 {
     const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
@@ -108,12 +129,16 @@ sealed class Win11Button : Button
 
     public bool Accent { get; init; }
 
+    // Drop-down look: left-aligned text plus a chevron on the right. Pair with a
+    // ContextMenuStrip (see Win11DropDown) for a Win11-style selector.
+    public bool Chevron { get; init; }
+
     public Win11Button(bool light)
     {
         _light = light;
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
-        Size = new Size(88, 32);
-        Margin = new Padding(8, 0, 0, 0);
+        Size = Dpi.Sz(88, 32);
+        Margin = Dpi.Pad(8, 0, 0, 0);
     }
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
@@ -132,7 +157,7 @@ sealed class Win11Button : Button
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
         var rect = new RectangleF(0.5F, 0.5F, Width - 1, Height - 1);
-        using var path = Gfx.Round(rect, 4F);
+        using var path = Gfx.Round(rect, Dpi.S(4F));
         using (var fill = new SolidBrush(FillColor()))
             g.FillPath(fill, path);
 
@@ -142,8 +167,30 @@ sealed class Win11Button : Button
             g.DrawPath(pen, path);
         }
 
-        TextRenderer.DrawText(g, Text, Font, ClientRectangle, TextColor(),
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        if (!Chevron)
+        {
+            TextRenderer.DrawText(g, Text, Font, ClientRectangle, TextColor(),
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            return;
+        }
+
+        int pad = Dpi.S(11);
+        int glyph = Dpi.S(10);
+        var textRect = new Rectangle(pad, 0, Width - pad * 2 - glyph - Dpi.S(6), Height);
+        TextRenderer.DrawText(g, Text, Font, textRect, TextColor(),
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+
+        // Chevron-down, stroked like the Fluent "ChevronDown" glyph.
+        float cx = Width - pad - glyph / 2F;
+        float cy = Height / 2F;
+        float half = glyph / 2F;
+        using var chevron = new Pen(TextColor(), Dpi.S(1.3F)) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+        g.DrawLines(chevron, new[]
+        {
+            new PointF(cx - half, cy - half / 2F),
+            new PointF(cx, cy + half / 2F),
+            new PointF(cx + half, cy - half / 2F),
+        });
     }
 
     Color FillColor()
@@ -163,18 +210,71 @@ sealed class Win11Button : Button
         !Enabled ? Theme.Disabled(_light) : Accent ? Color.White : Theme.Fore(_light);
 }
 
+// Win11-style selector: a chevron button that opens a menu (drawn by the shared
+// ModernMenuRenderer, so it matches the tray menu) listing the choices, with a
+// check on the selected one. Raises SelectionChanged with the chosen value.
+sealed class Win11DropDown<T>
+{
+    readonly List<(T Value, string Label)> _items = new();
+    readonly ContextMenuStrip _menu = new();
+
+    public Win11Button Button { get; }
+    public T? Selected { get; private set; }
+    public event Action<T>? SelectionChanged;
+
+    public Win11DropDown(bool light, int width)
+    {
+        Button = new Win11Button(light) { Chevron = true, Width = width, Margin = Padding.Empty };
+        _menu.BackColor = Theme.Back(light);
+        _menu.ForeColor = Theme.Fore(light);
+        _menu.Opened += (_, _) => Win11.RoundCorners(_menu);
+        Button.Click += (_, _) =>
+        {
+            _menu.MinimumSize = new Size(Button.Width, 0);
+            _menu.Show(Button, new Point(0, Button.Height + Dpi.S(2)));
+        };
+        Button.Disposed += (_, _) => _menu.Dispose();
+    }
+
+    // Replace the choices (e.g. after a language change re-translates a label).
+    public void SetItems(IEnumerable<(T Value, string Label)> items, T selected)
+    {
+        _items.Clear();
+        _items.AddRange(items);
+        foreach (var item in _menu.Items.Cast<ToolStripItem>().ToArray()) item.Dispose();
+        _menu.Items.Clear();
+        foreach (var (value, label) in _items)
+        {
+            var entry = new ToolStripMenuItem(label);
+            entry.Click += (_, _) => Select(value, raise: true);
+            _menu.Items.Add(entry);
+        }
+        Select(selected, raise: false);
+    }
+
+    void Select(T value, bool raise)
+    {
+        Selected = value;
+        for (int i = 0; i < _items.Count; i++)
+        {
+            bool match = EqualityComparer<T>.Default.Equals(_items[i].Value, value);
+            ((ToolStripMenuItem)_menu.Items[i]).Checked = match;
+            if (match) Button.Text = _items[i].Label;
+        }
+        if (raise) SelectionChanged?.Invoke(value);
+    }
+}
+
 // Bottom action strip of a Win11-style dialog: a slightly darker band with a
 // hairline on top and buttons flowing in from the right.
 static class DialogFooter
 {
-    public const int Height = 60;
-
     public static Panel Create(bool light, params Button[] buttonsRightToLeft)
     {
         var footer = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = Height,
+            Height = Dpi.S(60),
             BackColor = Theme.Footer(light),
         };
         footer.Paint += (_, e) =>
@@ -187,7 +287,7 @@ static class DialogFooter
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(8, 14, 24, 0),
+            Padding = Dpi.Pad(8, 14, 24, 0),
         };
         foreach (var button in buttonsRightToLeft) flow.Controls.Add(button);
         footer.Controls.Add(flow);
@@ -226,11 +326,11 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
     {
         if (!e.Item.Selected || !e.Item.Enabled) return;
 
-        var bounds = new Rectangle(4, 1, e.Item.Width - 8, e.Item.Height - 2);
+        var bounds = new Rectangle(Dpi.S(4), 1, e.Item.Width - Dpi.S(8), e.Item.Height - 2);
         var oldSmoothing = e.Graphics.SmoothingMode;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         using var brush = new SolidBrush(Theme.Hover(_light));
-        using var path = Gfx.Round(bounds, 6);
+        using var path = Gfx.Round(bounds, Dpi.S(6F));
         e.Graphics.FillPath(brush, path);
         e.Graphics.SmoothingMode = oldSmoothing;
     }
@@ -246,7 +346,7 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
         var bounds = e.Item.Bounds;
         int y = bounds.Height / 2;
         using var pen = new Pen(Theme.Line(_light));
-        e.Graphics.DrawLine(pen, bounds.Left + 8, y, bounds.Right - 8, y);
+        e.Graphics.DrawLine(pen, bounds.Left + Dpi.S(8), y, bounds.Right - Dpi.S(8), y);
     }
 
     protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
@@ -254,7 +354,7 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
         var oldSmoothing = e.Graphics.SmoothingMode;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         var bounds = e.ImageRectangle;
-        using var pen = new Pen(Theme.Fore(_light), 1.6F) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        using var pen = new Pen(Theme.Fore(_light), Dpi.S(1.6F)) { StartCap = LineCap.Round, EndCap = LineCap.Round };
         float x = bounds.X + bounds.Width * 0.18F;
         float y = bounds.Y + bounds.Height * 0.52F;
         e.Graphics.DrawLines(pen, new[]
@@ -287,35 +387,46 @@ sealed class ModernMenuRenderer : ToolStripProfessionalRenderer
 }
 
 // A small, silent, self-dismissing pill near the bottom-center of the active
-// screen. It uses a layered window for smooth corners and translucency.
+// screen: a semibold title line (normal text color for info, amber for warnings,
+// red for errors) over an optional body line. It uses a layered window for smooth
+// corners and translucency.
 sealed class ToastForm : Form
 {
     // Shared across every toast for the app's lifetime: WinForms never disposes a
-    // Font assigned to a control, so a per-instance Font here would leak GDI
+    // Font assigned to a control, so per-instance Fonts here would leak GDI
     // handles on every notification.
-    static readonly Font ToastFont = new("Segoe UI", 10.5F);
+    static readonly Font TitleFont = new("Segoe UI Semibold", 10.5F);
+    static readonly Font BodyFont = new("Segoe UI", 10.5F);
 
-    readonly System.Windows.Forms.Timer _life = new() { Interval = 1800 };
-    readonly string _message;
-    readonly Color _foreground;
+    readonly System.Windows.Forms.Timer _life;
+    readonly string _title;
+    readonly string _body;
+    readonly Color _titleColor;
+    readonly Color _bodyColor;
     readonly Color _background;
+    readonly SizeF _titleSize;
+    readonly SizeF _bodySize;
 
-    const int Radius = 9;
-    const int PaddingX = 28;
-    const int PaddingY = 16;
-    const int MaxTextWidth = 480;
+    static readonly int Radius = Dpi.S(9);
+    static readonly int PaddingX = Dpi.S(28);
+    static readonly int PaddingY = Dpi.S(14);
+    static readonly int LineGap = Dpi.S(2);
+    static readonly int MaxTextWidth = Dpi.S(480);
 
-    public ToastForm(string message, Color foreground, Color background)
+    public ToastForm(string title, string body, Color titleColor, Color bodyColor, Color background, int lifetimeMs)
     {
-        _message = message;
-        _foreground = foreground;
+        _title = title;
+        _body = body;
+        _titleColor = titleColor;
+        _bodyColor = bodyColor;
         _background = background;
+        _life = new System.Windows.Forms.Timer { Interval = lifetimeMs };
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
-        Font = ToastFont;
+        Font = BodyFont;
 
         // Measure with the same GDI+ engine and StringFormat used for drawing.
         // GDI (TextRenderer) wraps at different points than GDI+ (DrawString), so
@@ -323,14 +434,17 @@ sealed class ToastForm : Form
         using var format = TextFormat();
         using var probe = Graphics.FromHwnd(IntPtr.Zero);
         probe.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-        var measured = probe.MeasureString(_message, Font, MaxTextWidth, format);
+        _titleSize = probe.MeasureString(_title, TitleFont, MaxTextWidth, format);
+        _bodySize = _body.Length == 0 ? SizeF.Empty : probe.MeasureString(_body, BodyFont, MaxTextWidth, format);
 
-        Width = Math.Max((int)MathF.Ceiling(measured.Width) + PaddingX * 2 + 2, 180);
-        Height = Math.Max((int)MathF.Ceiling(measured.Height) + PaddingY * 2 + 2, 56);
+        float textWidth = Math.Max(_titleSize.Width, _bodySize.Width);
+        float textHeight = _titleSize.Height + (_body.Length == 0 ? 0 : LineGap + _bodySize.Height);
+        Width = Math.Max((int)MathF.Ceiling(textWidth) + PaddingX * 2 + 2, Dpi.S(180));
+        Height = Math.Max((int)MathF.Ceiling(textHeight) + PaddingY * 2 + 2, Dpi.S(56));
 
         var screen = Screen.FromPoint(Cursor.Position);
         var area = screen.WorkingArea;
-        Location = new Point(area.Left + (area.Width - Width) / 2, area.Bottom - Height - 14);
+        Location = new Point(area.Left + (area.Width - Width) / 2, area.Bottom - Height - Dpi.S(14));
 
         _life.Tick += (_, _) =>
         {
@@ -344,7 +458,7 @@ sealed class ToastForm : Form
     static StringFormat TextFormat() => new()
     {
         Alignment = StringAlignment.Center,
-        LineAlignment = StringAlignment.Center,
+        LineAlignment = StringAlignment.Near,
     };
 
     protected override bool ShowWithoutActivation => true;
@@ -405,14 +519,23 @@ sealed class ToastForm : Form
 
             // No LineLimit: the window was sized from an exact measurement, and
             // LineLimit would drop the whole last line on a 1px rounding shortfall.
+            // The text block is centered vertically; each line is centered
+            // horizontally by the StringFormat.
             using var stringFormat = TextFormat();
-            using var textBrush = new SolidBrush(_foreground);
-            g.DrawString(
-                _message,
-                Font,
-                textBrush,
-                new RectangleF(PaddingX, PaddingY, Width - PaddingX * 2, Height - PaddingY * 2),
-                stringFormat);
+            float textHeight = _titleSize.Height + (_body.Length == 0 ? 0 : LineGap + _bodySize.Height);
+            float top = (Height - textHeight) / 2F;
+            float width = Width - PaddingX * 2;
+
+            using (var titleBrush = new SolidBrush(_titleColor))
+                g.DrawString(_title, TitleFont, titleBrush,
+                    new RectangleF(PaddingX, top, width, _titleSize.Height), stringFormat);
+
+            if (_body.Length > 0)
+            {
+                using var bodyBrush = new SolidBrush(_bodyColor);
+                g.DrawString(_body, BodyFont, bodyBrush,
+                    new RectangleF(PaddingX, top + _titleSize.Height + LineGap, width, _bodySize.Height), stringFormat);
+            }
         }
 
         PushLayered(bitmap);
@@ -489,7 +612,9 @@ static class TrayArt
 {
     public static Icon Speaker()
     {
-        using var bitmap = SpeakerBitmap(32);
+        // Render at the size the tray actually shows (16px at 100%, 40px at 250%)
+        // so the shell never rescales a fixed-size bitmap.
+        using var bitmap = SpeakerBitmap(SystemInformation.SmallIconSize.Width);
         IntPtr handle = bitmap.GetHicon();
         try
         {
@@ -524,45 +649,95 @@ static class TrayArt
         g.Restore(state);
     }
 
-    // "Speaker 2" (filled, 24px) from Microsoft's Fluent UI System Icons, MIT
-    // licensed: https://github.com/microsoft/fluentui-system-icons
-    // The SVG path is baked in as bezier/line segments in its native 24-unit space.
+    // Tray glyph: Fluent UI System Icons (Microsoft, MIT licensed,
+    // https://github.com/microsoft/fluentui-system-icons) "Speaker 2" (filled, 24px)
+    // scaled to 88%, with a ring knocked out around an "Arrow Sync Circle" badge
+    // (filled, 24px, at 52% in the bottom-right). The badge is what sets it apart
+    // from the Windows volume icon next to it. GDI+ has no anti-aliased boolean
+    // ops, so the combined outline was computed once (WPF Geometry.Combine) and is
+    // baked in here as bezier/line segments in the native 24-unit space.
     static GraphicsPath SpeakerPath()
     {
         var path = new GraphicsPath(FillMode.Winding);
         path.StartFigure();
-        path.AddLine(15f, 4.25049f, 15f, 19.7461f);
-        path.AddBezier(15f, 19.7461f, 15f, 20.8247f, 13.7255f, 21.397f, 12.9194f, 20.6802f);
-        path.AddLine(12.9194f, 20.6802f, 8.42793f, 16.6865f);
-        path.AddBezier(8.42793f, 16.6865f, 8.29063f, 16.5644f, 8.11329f, 16.497f, 7.92956f, 16.497f);
-        path.AddLine(7.92956f, 16.497f, 4.25f, 16.497f);
-        path.AddBezier(4.25f, 16.497f, 3.00736f, 16.497f, 2f, 15.4896f, 2f, 14.247f);
-        path.AddLine(2f, 14.247f, 2f, 9.74907f);
-        path.AddBezier(2f, 9.74907f, 2f, 8.50643f, 3.00736f, 7.49907f, 4.25f, 7.49907f);
-        path.AddLine(4.25f, 7.49907f, 7.92961f, 7.49907f);
-        path.AddBezier(7.92961f, 7.49907f, 8.11333f, 7.49907f, 8.29065f, 7.43165f, 8.42794f, 7.30958f);
-        path.AddLine(8.42794f, 7.30958f, 12.9195f, 3.31631f);
-        path.AddBezier(12.9195f, 3.31631f, 13.7255f, 2.59964f, 15f, 3.17187f, 15f, 4.25049f);
+        path.AddBezier(15.77f, 18.24f, 15.5546f, 18.24f, 15.38f, 18.4146f, 15.38f, 18.63f);
+        path.AddLine(15.38f, 18.63f, 15.38f, 20.19f);
+        path.AddBezier(15.38f, 20.19f, 15.38f, 20.4054f, 15.5546f, 20.58f, 15.77f, 20.58f);
+        path.AddBezier(15.77f, 20.58f, 15.9854f, 20.58f, 16.16f, 20.4054f, 16.16f, 20.19f);
+        path.AddLine(16.16f, 20.19f, 16.16f, 19.8003f);
+        path.AddBezier(16.16f, 19.8003f, 16.6344f, 20.4316f, 17.3895f, 20.84f, 18.24f, 20.84f);
+        path.AddBezier(18.24f, 20.84f, 19.0335f, 20.84f, 19.7443f, 20.4841f, 20.2206f, 19.9244f);
+        path.AddBezier(20.2206f, 19.9244f, 20.3602f, 19.7604f, 20.3404f, 19.5143f, 20.1764f, 19.3747f);
+        path.AddBezier(20.1764f, 19.3747f, 20.0124f, 19.2351f, 19.7663f, 19.2549f, 19.6266f, 19.4189f);
+        path.AddBezier(19.6266f, 19.4189f, 19.2922f, 19.8118f, 18.7953f, 20.06f, 18.24f, 20.06f);
+        path.AddBezier(18.24f, 20.06f, 17.514f, 20.06f, 16.8872f, 19.6349f, 16.5951f, 19.02f);
+        path.AddLine(16.5951f, 19.02f, 17.33f, 19.02f);
+        path.AddBezier(17.33f, 19.02f, 17.5454f, 19.02f, 17.72f, 18.8454f, 17.72f, 18.63f);
+        path.AddBezier(17.72f, 18.63f, 17.72f, 18.4146f, 17.5454f, 18.24f, 17.33f, 18.24f);
+        path.AddLine(17.33f, 18.24f, 15.77f, 18.24f);
         path.CloseFigure();
         path.StartFigure();
-        path.AddBezier(18.9916f, 5.89782f, 19.3244f, 5.65128f, 19.7941f, 5.72126f, 20.0407f, 6.05411f);
-        path.AddBezier(20.0407f, 6.05411f, 21.2717f, 7.71619f, 22f, 9.77439f, 22f, 12.0005f);
-        path.AddBezier(22f, 12.0005f, 22f, 14.2266f, 21.2717f, 16.2848f, 20.0407f, 17.9469f);
-        path.AddBezier(20.0407f, 17.9469f, 19.7941f, 18.2798f, 19.3244f, 18.3497f, 18.9916f, 18.1032f);
-        path.AddBezier(18.9916f, 18.1032f, 18.6587f, 17.8567f, 18.5888f, 17.387f, 18.8353f, 17.0541f);
-        path.AddBezier(18.8353f, 17.0541f, 19.8815f, 15.6416f, 20.5f, 13.8943f, 20.5f, 12.0005f);
-        path.AddBezier(20.5f, 12.0005f, 20.5f, 10.1067f, 19.8815f, 8.35945f, 18.8353f, 6.9469f);
-        path.AddBezier(18.8353f, 6.9469f, 18.5888f, 6.61404f, 18.6587f, 6.14435f, 18.9916f, 5.89782f);
+        path.AddBezier(18.24f, 15.64f, 17.4461f, 15.64f, 16.7351f, 15.9963f, 16.2588f, 16.5563f);
+        path.AddBezier(16.2588f, 16.5563f, 16.1192f, 16.7203f, 16.1391f, 16.9665f, 16.3032f, 17.106f);
+        path.AddBezier(16.3032f, 17.106f, 16.4672f, 17.2456f, 16.7134f, 17.2257f, 16.8529f, 17.0616f);
+        path.AddBezier(16.8529f, 17.0616f, 17.1874f, 16.6684f, 17.6845f, 16.42f, 18.24f, 16.42f);
+        path.AddBezier(18.24f, 16.42f, 18.966f, 16.42f, 19.5927f, 16.8451f, 19.8849f, 17.46f);
+        path.AddLine(19.8849f, 17.46f, 19.15f, 17.46f);
+        path.AddBezier(19.15f, 17.46f, 18.9346f, 17.46f, 18.76f, 17.6346f, 18.76f, 17.85f);
+        path.AddBezier(18.76f, 17.85f, 18.76f, 18.0654f, 18.9346f, 18.24f, 19.15f, 18.24f);
+        path.AddLine(19.15f, 18.24f, 20.71f, 18.24f);
+        path.AddBezier(20.71f, 18.24f, 20.9254f, 18.24f, 21.1f, 18.0654f, 21.1f, 17.85f);
+        path.AddLine(21.1f, 17.85f, 21.1f, 16.29f);
+        path.AddBezier(21.1f, 16.29f, 21.1f, 16.0746f, 20.9254f, 15.9f, 20.71f, 15.9f);
+        path.AddBezier(20.71f, 15.9f, 20.4946f, 15.9f, 20.32f, 16.0746f, 20.32f, 16.29f);
+        path.AddLine(20.32f, 16.29f, 20.32f, 16.6798f);
+        path.AddBezier(20.32f, 16.6798f, 19.8457f, 16.0484f, 19.0905f, 15.64f, 18.24f, 15.64f);
         path.CloseFigure();
         path.StartFigure();
-        path.AddBezier(17.143f, 8.36982f, 17.5072f, 8.17262f, 17.9624f, 8.30806f, 18.1596f, 8.67233f);
-        path.AddBezier(18.1596f, 8.67233f, 18.6958f, 9.66294f, 19f, 10.7973f, 19f, 12.0005f);
-        path.AddBezier(19f, 12.0005f, 19f, 13.2037f, 18.6958f, 14.338f, 18.1596f, 15.3287f);
-        path.AddBezier(18.1596f, 15.3287f, 17.9624f, 15.6929f, 17.5072f, 15.8284f, 17.143f, 15.6312f);
-        path.AddBezier(17.143f, 15.6312f, 16.7787f, 15.434f, 16.6432f, 14.9788f, 16.8404f, 14.6146f);
-        path.AddBezier(16.8404f, 14.6146f, 17.2609f, 13.8378f, 17.5f, 12.9482f, 17.5f, 12.0005f);
-        path.AddBezier(17.5f, 12.0005f, 17.5f, 11.0528f, 17.2609f, 10.1632f, 16.8404f, 9.38642f);
-        path.AddBezier(16.8404f, 9.38642f, 16.6432f, 9.02216f, 16.7787f, 8.56701f, 17.143f, 8.36982f);
+        path.AddBezier(18.24f, 13.04f, 21.1119f, 13.04f, 23.44f, 15.3681f, 23.44f, 18.24f);
+        path.AddBezier(23.44f, 18.24f, 23.44f, 21.1119f, 21.1119f, 23.44f, 18.24f, 23.44f);
+        path.AddBezier(18.24f, 23.44f, 15.3681f, 23.44f, 13.04f, 21.1119f, 13.04f, 18.24f);
+        path.AddBezier(13.04f, 18.24f, 13.04f, 15.3681f, 15.3681f, 13.04f, 18.24f, 13.04f);
+        path.CloseFigure();
+        path.StartFigure();
+        path.AddBezier(15.5883f, 7.7133f, 15.7502f, 7.7614f, 15.8937f, 7.8714f, 15.9804f, 8.0317f);
+        path.AddBezier(15.9804f, 8.0317f, 16.4523f, 8.9034f, 16.72f, 9.9016f, 16.72f, 10.9604f);
+        path.AddLine(16.72f, 10.9604f, 16.599f, 11.9232f);
+        path.AddLine(16.599f, 11.9232f, 15.631f, 12.1187f);
+        path.AddLine(15.631f, 12.1187f, 15.0005f, 12.5437f);
+        path.AddLine(15.0005f, 12.5437f, 15.4f, 10.9604f);
+        path.AddBezier(15.4f, 10.9604f, 15.4f, 10.1265f, 15.1896f, 9.3436f, 14.8196f, 8.66f);
+        path.AddBezier(14.8196f, 8.66f, 14.646f, 8.3395f, 14.7653f, 7.939f, 15.0858f, 7.7654f);
+        path.AddBezier(15.0858f, 7.7654f, 15.2461f, 7.6787f, 15.4264f, 7.6651f, 15.5883f, 7.7133f);
+        path.CloseFigure();
+        path.StartFigure();
+        path.AddBezier(17.2027f, 5.4677f, 17.3697f, 5.4925f, 17.5273f, 5.5812f, 17.6358f, 5.7276f);
+        path.AddBezier(17.6358f, 5.7276f, 18.7191f, 7.1902f, 19.36f, 9.0015f, 19.36f, 10.9604f);
+        path.AddLine(19.36f, 10.9604f, 19.2224f, 11.8064f);
+        path.AddLine(19.2224f, 11.8064f, 18.2f, 11.6f);
+        path.AddLine(18.2f, 11.6f, 17.9271f, 11.6551f);
+        path.AddLine(17.9271f, 11.6551f, 18.04f, 10.9604f);
+        path.AddBezier(18.04f, 10.9604f, 18.04f, 9.2939f, 17.4957f, 7.7563f, 16.5751f, 6.5133f);
+        path.AddBezier(16.5751f, 6.5133f, 16.3581f, 6.2204f, 16.4197f, 5.807f, 16.7126f, 5.5901f);
+        path.AddBezier(16.7126f, 5.5901f, 16.859f, 5.4816f, 17.0356f, 5.4428f, 17.2027f, 5.4677f);
+        path.CloseFigure();
+        path.StartFigure();
+        path.AddBezier(11.9545f, 3.0473f, 12.5691f, 2.9673f, 13.2f, 3.4285f, 13.2f, 4.1404f);
+        path.AddLine(13.2f, 4.1404f, 13.2f, 14.0271f);
+        path.AddLine(13.2f, 14.0271f, 12.1187f, 15.631f);
+        path.AddBezier(12.1187f, 15.631f, 11.7847f, 16.4206f, 11.6f, 17.2887f, 11.6f, 18.2f);
+        path.AddLine(11.6f, 18.2f, 11.7126f, 18.7577f);
+        path.AddLine(11.7126f, 18.7577f, 11.3691f, 18.5986f);
+        path.AddLine(11.3691f, 18.5986f, 7.4166f, 15.0841f);
+        path.AddBezier(7.4166f, 15.0841f, 7.2958f, 14.9767f, 7.1397f, 14.9174f, 6.978f, 14.9174f);
+        path.AddLine(6.978f, 14.9174f, 3.74f, 14.9174f);
+        path.AddBezier(3.74f, 14.9174f, 2.6465f, 14.9174f, 1.76f, 14.0308f, 1.76f, 12.9374f);
+        path.AddLine(1.76f, 12.9374f, 1.76f, 8.9792f);
+        path.AddBezier(1.76f, 8.9792f, 1.76f, 7.8857f, 2.6465f, 6.9992f, 3.74f, 6.9992f);
+        path.AddLine(3.74f, 6.9992f, 6.9781f, 6.9992f);
+        path.AddBezier(6.9781f, 6.9992f, 7.1397f, 6.9992f, 7.2958f, 6.9399f, 7.4166f, 6.8324f);
+        path.AddLine(7.4166f, 6.8324f, 11.3692f, 3.3184f);
+        path.AddBezier(11.3692f, 3.3184f, 11.5465f, 3.1607f, 11.7496f, 3.0739f, 11.9545f, 3.0473f);
         path.CloseFigure();
         return path;
     }
