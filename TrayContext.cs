@@ -73,18 +73,24 @@ sealed class TrayContext : ApplicationContext
                 _ui.Post(_ => UpdateTooltip(), null);
         }));
 
-        // Restore a tray pin lost to a Store update (see TrayPin). Explorer creates
-        // this version's settings entry some time after the icon is added, so look
-        // twice: shortly after start and again a little later.
-        int pinChecks = 0;
-        var pinTimer = new System.Windows.Forms.Timer { Interval = 3000 };
-        pinTimer.Tick += (_, _) =>
+        // Tell the user once if a Store update lost their tray pin (see TrayPin).
+        // Explorer creates this version's settings entry some time after the icon
+        // is added, so look twice: shortly after start and again a little later.
+        if (_settings.PinNoticeShownFor != AppMetadata.VersionText)
         {
-            TrayPin.CarryForward();
-            pinTimer.Interval = 12000;
-            if (++pinChecks == 2) { pinTimer.Stop(); pinTimer.Dispose(); }
-        };
-        pinTimer.Start();
+            int pinChecks = 0;
+            var pinTimer = new System.Windows.Forms.Timer { Interval = 3000 };
+            pinTimer.Tick += (_, _) =>
+            {
+                pinTimer.Interval = 12000;
+                bool lost = TrayPin.PinLostInUpdate();
+                if (!lost && ++pinChecks < 2) return;
+                pinTimer.Stop();
+                pinTimer.Dispose();
+                if (lost) ShowPinNotice();
+            };
+            pinTimer.Start();
+        }
 
         _showWait = ThreadPool.RegisterWaitForSingleObject(_showEvent,
             (_, _) => _ui.Post(_ => ShowAlreadyRunning(), null), null, Timeout.Infinite, executeOnlyOnce: false);
@@ -109,6 +115,13 @@ sealed class TrayContext : ApplicationContext
             };
             timer.Start();
         }
+    }
+
+    void ShowPinNotice()
+    {
+        _settings.PinNoticeShownFor = AppMetadata.VersionText;
+        SettingsStore.Save(_settings);
+        PinNoticeDialog.Show(AppMetadata.VersionText);
     }
 
     async Task ShowWelcomeAsync()

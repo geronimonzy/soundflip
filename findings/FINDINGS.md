@@ -53,14 +53,20 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 - **Verify in VM:** `Restore-TestVM clean-100` → launch → screenshot; launch again →
   screenshot.
 
-## F2 · Pinning to the visible tray ✅ · **FIXED** on `fix/toast-messages`
+## F2 · Pinning to the visible tray ✅ · **NOTICE** on `fix/toast-messages` (no re-pin)
 
 > Confirmed in the VM with signed test MSIX updates: the tray entry is keyed by the
-> versioned install path, so each update came back unpinned. Fix: `TrayPin.cs` copies
-> an older SoundFlip entry's pin to the new one (only if undecided; never pins by
-> itself). Needed a manifest exclusion of `HKCU\Control Panel\NotifyIconSettings`
-> from MSIX registry virtualization + restricted capability `unvirtualizedResources`
-> (Partner Center will ask for a justification). Verified: pin survives 1.4.4 → 1.4.5.
+> versioned install path, so each update came back unpinned.
+> First fix (`TrayPin` copying the old entry's `IsPromoted` to the new one) worked
+> (1.4.4 → 1.4.5) but needed a manifest exclusion of `HKCU\Control Panel\NotifyIconSettings`
+> from registry virtualization + the restricted capability `unvirtualizedResources`,
+> and writes an undocumented key. **Dropped (2026-10-02).** A `NIF_GUID` icon is no
+> alternative: the Store-installed exe is `NotSigned` (the Store signs only the
+> package), so the GUID would be bound to the versioned path too.
+> Now: `TrayPin.PinLostInUpdate` only *reads* the key (no capability needed); if the
+> newest earlier version of the package was pinned and this one is undecided,
+> `PinNoticeDialog` says so once per version (Taskbar settings button + OK).
+> Not yet exercised in the VM.
 >
 > Side finding: `package-msix.ps1` failed under Windows PowerShell 5.1 (em-dashes in a
 > BOM-less UTF-8 file); now ASCII. CI uses pwsh and was unaffected.
@@ -258,7 +264,7 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 
 ## Not tested yet ❓
 
-- Store/MSIX install flow and pin persistence across updates (F2).
+- The F2 pin-lost notice across a real MSIX update.
 - Dark mode (menus, dialogs, toast colors).
 - Mixed-DPI multi-monitor (SystemAware → blurry on the secondary monitor).
 - Real call apps (Teams/Discord/Zoom) following the switch; TESTING.md matrix.

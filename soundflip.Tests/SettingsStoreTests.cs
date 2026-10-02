@@ -15,6 +15,7 @@ public sealed class SettingsStoreTests
             Inputs = { new DeviceEntry { Match = "Yeti" } },
             CycleOutputs = "ctrl+alt+o",
             CycleInputs = "ctrl+alt+i",
+            PinNoticeShownFor = "1.4.1",
         };
 
         var actual = SettingsStore.Deserialize(SettingsStore.Serialize(settings));
@@ -25,6 +26,7 @@ public sealed class SettingsStoreTests
         Assert.Single(actual.Inputs);
         Assert.Equal("Yeti", actual.Inputs[0].Match);
         Assert.Equal("ctrl+alt+i", actual.CycleInputs);
+        Assert.Equal("1.4.1", actual.PinNoticeShownFor);
     }
 
     // Pre-1.1.2 settings carried pairs, cycle-pair hotkeys, and per-device hotkeys;

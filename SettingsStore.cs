@@ -19,6 +19,10 @@ sealed class AppSettings
     // UI language: "auto" follows the Windows display language, otherwise one of
     // Loc.Supported ("en", "de", ...). Unknown values behave like "auto".
     public string Language { get; set; } = Loc.Auto;
+
+    // App version for which the "tray pin lost in the update" notice was shown,
+    // so it appears at most once per update.
+    public string PinNoticeShownFor { get; set; } = "";
 }
 
 static class SettingsStore

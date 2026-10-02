@@ -7,9 +7,10 @@ using Microsoft.Win32;
 // (...\WindowsApps\<name>_1.4.1.0_x64__<hash>\soundflip.exe), so after every update
 // the icon gets a fresh, unpinned entry and falls back into the ^ overflow.
 //
-// CarryForward restores the user's own choice: if an older SoundFlip entry is
-// pinned and the current one has never been decided, mark the current one pinned.
-// It never pins on its own and never overrides an explicit unpin (IsPromoted = 0).
+// SoundFlip doesn't restore the pin itself: a packaged app can only write that key
+// with the restricted unvirtualizedResources capability, and the key is
+// undocumented. It only reads it, to tell the user once that the pin was lost
+// (PinNoticeDialog). Reads need no capability.
 static class TrayPin
 {
     const string SettingsKey = @"Control Panel\NotifyIconSettings";
@@ -17,15 +18,18 @@ static class TrayPin
 
     internal sealed record Entry(string Id, string Path, int? Promoted);
 
-    public static void CarryForward()
+    // True when the previous installed version was pinned and this version's entry
+    // is still undecided. False on any doubt: no entry yet, not a Store install,
+    // or the shell keeps this somewhere else in a future Windows.
+    public static bool PinLostInUpdate()
     {
         string? current = Environment.ProcessPath;
-        if (current is null) return;
+        if (current is null) return false;
 
         try
         {
             using var root = Registry.CurrentUser.OpenSubKey(SettingsKey);
-            if (root is null) return;
+            if (root is null) return false;
 
             var entries = new List<Entry>();
             foreach (string id in root.GetSubKeyNames())
@@ -35,31 +39,46 @@ static class TrayPin
                 entries.Add(new Entry(id, ResolveKnownFolder(path), key.GetValue("IsPromoted") as int?));
             }
 
-            string? target = EntryToPromote(entries, current);
-            if (target is null) return;
-
-            using var writable = Registry.CurrentUser.OpenSubKey($@"{SettingsKey}\{target}", writable: true);
-            writable?.SetValue("IsPromoted", 1, RegistryValueKind.DWord);
+            return PinLost(entries, current);
         }
         catch
         {
-            // Undocumented shell state: if it isn't there or looks different, the
-            // icon simply stays where Windows put it.
+            return false;
         }
     }
 
-    // The entry for this exe to pin, or null. Pure so it can be unit-tested.
-    internal static string? EntryToPromote(IReadOnlyList<Entry> entries, string currentPath)
+    // Pure so it can be unit-tested. Compares against the newest earlier version of
+    // the same package only: a user who saw the notice and chose not to re-pin
+    // leaves that version undecided, so the next update stays quiet.
+    internal static bool PinLost(IReadOnlyList<Entry> entries, string currentPath)
     {
         var mine = entries.FirstOrDefault(e => string.Equals(e.Path, currentPath, StringComparison.OrdinalIgnoreCase));
-        if (mine is null || mine.Promoted is not null) return null;
+        if (mine is null || mine.Promoted is not null) return false;
+        if (PackageOf(currentPath) is not { } current) return false;
 
-        bool pinnedBefore = entries.Any(e =>
-            !ReferenceEquals(e, mine)
-            && e.Promoted == 1
-            && string.Equals(System.IO.Path.GetFileName(e.Path), ExeName, StringComparison.OrdinalIgnoreCase));
+        var previous = entries
+            .Select(e => (Entry: e, Package: PackageOf(e.Path)))
+            .Where(x => x.Package is { } p
+                && string.Equals(p.Name, current.Name, StringComparison.OrdinalIgnoreCase)
+                && p.Version < current.Version)
+            .OrderByDescending(x => x.Package!.Value.Version)
+            .Select(x => x.Entry)
+            .FirstOrDefault();
 
-        return pinnedBefore ? mine.Id : null;
+        return previous?.Promoted == 1;
+    }
+
+    // Package name and version from an MSIX install path, e.g.
+    // ...\WindowsApps\KirillFedorov.SoundFlip_1.4.1.0_x64__hash\soundflip.exe.
+    // Null for anything else (unpackaged builds, other apps).
+    internal static (string Name, Version Version)? PackageOf(string exePath)
+    {
+        if (!string.Equals(System.IO.Path.GetFileName(exePath), ExeName, StringComparison.OrdinalIgnoreCase)) return null;
+
+        string folder = System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(exePath) ?? "");
+        string[] parts = folder.Split('_');
+        if (parts.Length != 5 || !Version.TryParse(parts[1], out var version)) return null;
+        return (parts[0], version);
     }
 
     // The shell stores paths with a leading known-folder GUID, e.g.
