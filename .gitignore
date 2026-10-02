@@ -14,3 +14,4 @@ image-*.png
 /TESTING.md
 /Store/listings
 tools/testvm/unattend.iso
+/findings
