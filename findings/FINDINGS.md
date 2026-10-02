@@ -66,7 +66,10 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 > Now: `TrayPin.PinLostInUpdate` only *reads* the key (no capability needed); if the
 > newest earlier version of the package was pinned and this one is undecided,
 > `PinNoticeDialog` says so once per version (Taskbar settings button + OK).
-> Not yet exercised in the VM.
+> Verified in the VM with signed test MSIX 1.4.0 → 1.4.1 → 1.4.2 (the packaged app
+> reads the real key): notice after the pinned 1.4.0 → 1.4.1 update, not again on
+> restart, not on 1.4.2 when 1.4.1 was left unpinned; layout checked at 100% (en)
+> and 250% (de).
 >
 > Side finding: `package-msix.ps1` failed under Windows PowerShell 5.1 (em-dashes in a
 > BOM-less UTF-8 file); now ASCII. CI uses pwsh and was unaffected.
@@ -264,7 +267,6 @@ Build: `dotnet publish` of `main` @ `eaec64f` (v1.4.0, unpackaged single-file ex
 
 ## Not tested yet ❓
 
-- The F2 pin-lost notice across a real MSIX update.
 - Dark mode (menus, dialogs, toast colors).
 - Mixed-DPI multi-monitor (SystemAware → blurry on the secondary monitor).
 - Real call apps (Teams/Discord/Zoom) following the switch; TESTING.md matrix.
